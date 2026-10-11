@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { db, unwrap } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import type { AIService } from "@/lib/gemini/service";
@@ -63,8 +64,9 @@ export interface TraceRow {
 
 export interface RunSummary {
   runId: string | null;
-  skipped?: string;
-  status: "completed" | "partial" | "failed";
+  /** Set (with status "skipped") when another run owns the lock; no run row is created and no AI is called. */
+  skipped?: "already_running";
+  status: "completed" | "partial" | "failed" | "skipped";
   sourcesPolled: number;
   articlesFound: number;
   articlesNew: number;
@@ -76,7 +78,8 @@ export interface RunSummary {
   trace: TraceRow[];
 }
 
-const RUN_LOCK_MINUTES = 15;
+/** Extra lease time beyond the run's own deadline: an in-flight item (e.g. a ~30 s draft) may finish after it. */
+const LOCK_GRACE_SECONDS = 75;
 const MIN_CONFIDENCE = 0.5;
 const MAX_ROUND_ATTEMPTS = 3;
 
@@ -92,21 +95,41 @@ interface ArticleRow {
   first_seen_at: string;
 }
 
+/**
+ * Runs the pipeline under an atomic database lock (`acquire_pipeline_lock`): if another run owns a
+ * live lease, returns `{ status: "skipped", skipped: "already_running" }` without creating a run
+ * row, polling sources or calling Gemini. The lease is released in `finally`, and it also expires
+ * on its own if the function instance is killed, so a crash can never block runs permanently.
+ */
 export async function runPipeline(deps: PipelineDeps, opts: RunOptions): Promise<RunSummary> {
-  const now = deps.now ?? (() => new Date());
   const startedMs = Date.now();
   const deadline = opts.deadline ?? startedMs + env().PIPELINE_TIME_BUDGET_SECONDS * 1000;
-  const summary: RunSummary = {
+  const runId = randomUUID();
+
+  const ttl = Math.ceil((deadline - startedMs) / 1000) + LOCK_GRACE_SECONDS;
+  const acquired = unwrap(await db().rpc("acquire_pipeline_lock", { p_owner: runId, p_ttl_seconds: ttl }), "acquire pipeline lock");
+  if (!acquired) return { ...emptySummary(), status: "skipped", skipped: "already_running" };
+
+  try {
+    return await executePipeline(deps, opts, runId, deadline);
+  } finally {
+    const released = await db().rpc("release_pipeline_lock", { p_owner: runId });
+    if (released.error) console.error("failed to release pipeline lock (it will expire on its own)", released.error.message);
+  }
+}
+
+function emptySummary(): RunSummary {
+  return {
     runId: null, status: "completed", sourcesPolled: 0, articlesFound: 0, articlesNew: 0, articlesProcessed: 0,
     fundingEvents: 0, qualified: 0, drafts: 0, errors: [], trace: [],
   };
+}
 
-  // ── run lock: avoid overlapping runs ──
-  const since = new Date(startedMs - RUN_LOCK_MINUTES * 60_000).toISOString();
-  const running = await db().from("pipeline_runs").select("id").eq("status", "running").gte("started_at", since).limit(1);
-  if (running.data?.length) return { ...summary, status: "partial", skipped: `Run ${running.data[0].id} is still in progress` };
+async function executePipeline(deps: PipelineDeps, opts: RunOptions, runId: string, deadline: number): Promise<RunSummary> {
+  const now = deps.now ?? (() => new Date());
+  const summary = emptySummary();
 
-  const run = unwrap(await db().from("pipeline_runs").insert({ trigger: opts.trigger }).select("id").single<{ id: string }>(), "create run");
+  const run = unwrap(await db().from("pipeline_runs").insert({ id: runId, trigger: opts.trigger }).select("id").single<{ id: string }>(), "create run");
   summary.runId = run.id;
   const log = new PipelineLogger(run.id);
   replayMaxAge = opts.replayMaxAgeHours;

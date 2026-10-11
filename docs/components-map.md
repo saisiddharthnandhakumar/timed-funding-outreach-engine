@@ -35,13 +35,14 @@ flowchart TD
 | Route | Purpose | Key file |
 |---|---|---|
 | `/` | Dashboard: 24h stats, avg ingestion delay, pipeline status, "Run pipeline now" | `app/page.tsx`, `components/run-pipeline-button.tsx` |
-| `/feed` | Funding events with every source report (published → first seen) + filtered-out articles | `app/feed/page.tsx` |
-| `/qualified` | Qualified startups, score, top reasons, research + draft status | `app/qualified/page.tsx` |
-| `/startups/[id]` | Profile, founders, rounds, source articles, research evidence, fit breakdown, outreach | `app/startups/[id]/page.tsx` |
-| `/drafts` | Review/edit/approve/reject drafts; mark as sent manually | `app/drafts/page.tsx`, `actions.ts` |
-| `/settings` | Thesis editor (versioned), weights (sum = 100), recency bands, stage points | `app/settings/page.tsx`, `components/thesis-form.tsx` |
-| `/sources` | Source health + speed metrics (delay, wins, unique discoveries) | `app/sources/page.tsx` |
-| `/login` | Operator sign-in (cookie = HMAC of `ADMIN_PASSWORD`) | `app/login/page.tsx`, `proxy.ts` |
+| `/dashboard` | Counts, pipeline health, last run, recent events, "Run pipeline now" | `app/(app)/dashboard/page.tsx` |
+| `/feed` | Funding events with every source report (published → first seen) + filtered-out articles | `app/(app)/feed/page.tsx` |
+| `/qualified` | Qualified startups, score, top reasons, research + draft status | `app/(app)/qualified/page.tsx` |
+| `/startups/[id]` | Profile, founders, rounds, source articles, research evidence, fit breakdown, outreach | `app/(app)/startups/[id]/page.tsx` |
+| `/drafts` | Review/edit/approve/reject drafts; mark as sent manually | `app/(app)/drafts/page.tsx`, `actions.ts` |
+| `/settings` | Thesis editor (versioned), weights (sum = 100), recency bands, stage points | `app/(app)/settings/page.tsx`, `components/thesis-form.tsx` |
+| `/sources` | Source health + speed metrics (delay, wins, unique discoveries) | `app/(app)/sources/page.tsx` |
+| `/` | Public landing page (product explainer, live headline numbers, link to the dashboard) | `app/page.tsx` |
 
 ## Backend components (`src/lib`)
 
@@ -57,7 +58,7 @@ flowchart TD
 | `outreach/` | Outreach guard, generator (Gemini Task 4), `DraftProvider` (Gmail / database) |
 | `thesis/` | zod schema shared by the settings UI and its server action |
 | `supabase/admin.ts` | Server-only service-role client |
-| API routes | `/api/cron/pipeline` (Bearer `CRON_SECRET`), `/api/pipeline/run` (admin cookie, runs in `after()`) |
+| API routes | `/api/cron/pipeline` (Bearer `CRON_SECRET`), `/api/pipeline/run` (no login; runs in `after()`, serialized by the run lock) |
 
 ## Third-party services
 
@@ -86,8 +87,36 @@ Structured calls use `responseMimeType: application/json` + `responseJsonSchema`
 
 ## Scheduling
 
-`vercel.json` → Vercel Cron hits `GET /api/cron/pipeline` every 2 hours with `Authorization: Bearer $CRON_SECRET`. `.github/workflows/pipeline-cron.yml` is an optional equivalent for plans where Vercel Cron is limited to daily. Manual: dashboard button or `npm run pipeline`. A 15-minute run lock prevents overlapping runs; a time budget stops new work before the function limit and leaves the rest `pending` for the next run.
+The app deliberately runs on the **Vercel Hobby (free) plan**, where Vercel Cron can fire at most once a day. Two schedulers therefore call the *same* secured endpoint, `GET /api/cron/pipeline` (`Authorization: Bearer $CRON_SECRET`):
+
+| Scheduler | Cadence | Role |
+|---|---|---|
+| Vercel Cron (`vercel.json`) | daily, 03:30 UTC (09:00 IST) | Morning safety/anchor run; works even if GitHub is unavailable |
+| GitHub Actions (`.github/workflows/pipeline-cron.yml`) | every 2 hours (minute 15) | The discovery cadence the product needs |
+
+GitHub scheduled workflows have no timing guarantee and can start late (or occasionally skip a slot), so the dashboard's **Pipeline Health** card shows the time since the last successful run and flags *Delayed* / *Warning*. The pipeline can always be run manually from the dashboard button (or `npm run pipeline`).
+
+```mermaid
+flowchart LR
+  V[Vercel Cron daily] --> E[/api/cron/pipeline/]
+  G[GitHub Actions every 2h] --> E
+  M[Dashboard: Run now] --> R
+  E --> R{acquire_pipeline_lock}
+  R -- lock held by another run --> S[skipped: already_running\nno run row, no Gemini calls]
+  R -- acquired --> P[pipeline run] --> L[release lock in finally]
+```
+
+**Concurrency control.** Runs are serialized by an atomic lease in Postgres (`pipeline_lock` table, `acquire_pipeline_lock` / `release_pipeline_lock` functions, migration `20261012000005`). A single `INSERT … ON CONFLICT DO UPDATE … WHERE expires_at <= now()` claims the lease, so two simultaneous triggers cannot both win. (A session-level `pg_advisory_lock` was rejected because the app talks to Postgres over stateless HTTP, where the lock's connection is not stable.) The lease is sized to the run deadline plus a grace period, is released in a `finally`, and expires on its own if a function instance dies. When a new run takes the lock, any `pipeline_runs` row still `running` is marked `failed` with a `stale_run` error. A caller that loses the race gets `{"status":"skipped","reason":"already_running"}` (HTTP 200) before any source is polled or Gemini is called. Row-level unique indexes (articles, startups, rounds, one live outreach per startup) remain as a second line of defence.
+
+A time budget stops new work before the function limit and leaves the rest `pending` for the next run.
 
 ## Configuration
 
 Business rules live in Supabase (`accelerator_theses`, `scoring_criteria`): allowed countries/stages, max age, threshold, sectors, weights, recency bands, stage points, thesis text. Secrets and runtime knobs live in environment variables (`.env.example`).
+
+
+## UI shell and theming
+
+Public landing page at `/` (`src/app/page.tsx`); the operator pages live in the `(app)` route group, whose layout adds the navigation bar. Light/dark mode is a class on `<html>` set before paint by an inline script (saved choice, else the OS preference) and switched by `components/theme-toggle.tsx`; `globals.css` remaps the Tailwind palette variables under `.dark`.
+
+**Access.** There is no login: anyone with the URL can view the pages, edit the thesis, review drafts and trigger a run. `/api/cron/pipeline` still requires `CRON_SECRET`. The run lock prevents overlapping runs, but see the README for the exposure this implies.

@@ -14,7 +14,6 @@ const schema = z.object({
   GOOGLE_GENERATIVE_AI_API_KEY: optional,
   GEMINI_MODEL: optional,
   CRON_SECRET: optional,
-  ADMIN_PASSWORD: optional,
   GOOGLE_CLIENT_ID: optional,
   GOOGLE_CLIENT_SECRET: optional,
   GOOGLE_REFRESH_TOKEN: optional,

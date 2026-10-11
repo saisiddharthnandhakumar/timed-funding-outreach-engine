@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { FUNDING_STAGES, STAGE_LABELS } from "@/types/domain";
 import type { ThesisInput } from "@/lib/thesis/schema";
-import { saveThesis, type SaveResult } from "@/app/settings/actions";
+import { saveThesis, type SaveResult } from "@/app/(app)/settings/actions";
 import { TagInput } from "./tag-input";
 
 const field = "mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500";

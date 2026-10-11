@@ -1,6 +1,7 @@
 import { db, unwrap } from "@/lib/supabase/admin";
 import { hasSupabaseEnv } from "@/lib/env";
 import { hoursDelay } from "@/lib/format";
+import { computePipelineHealth, type RunLike } from "@/lib/pipeline/health";
 
 export const configured = () => hasSupabaseEnv();
 
@@ -14,7 +15,7 @@ async function count(table: string, apply: (q: any) => any): Promise<number> {
 
 export async function dashboardData() {
   const s = since24h();
-  const [articles, events, qualified, rejected, drafts, lastRun, recentEvents, delays] = await Promise.all([
+  const [articles, events, qualified, rejected, drafts, lastRun, recentEvents, delays, healthRuns] = await Promise.all([
     count("funding_articles", (q) => q.gte("first_seen_at", s)),
     count("funding_rounds", (q) => q.gte("created_at", s)),
     count("fit_assessments", (q) => q.gte("assessed_at", s).eq("qualified", true)),
@@ -23,12 +24,14 @@ export async function dashboardData() {
     db().from("pipeline_runs").select("*").order("started_at", { ascending: false }).limit(5),
     db().from("pipeline_events").select("id,event_type,message,created_at,entity_type").order("created_at", { ascending: false }).limit(12),
     db().from("funding_articles").select("source_published_at,first_seen_at").gte("first_seen_at", s).not("source_published_at", "is", null).limit(2000),
+    db().from("pipeline_runs").select("id,status,trigger,started_at,completed_at,errors_json").order("started_at", { ascending: false }).limit(50),
   ]);
   const ds = ((delays.data ?? []) as { source_published_at: string; first_seen_at: string }[])
     .map((r) => hoursDelay(r.source_published_at, r.first_seen_at))
     .filter((d): d is number => d != null && d >= 0);
   const avgDelay = ds.length ? ds.reduce((a, b) => a + b, 0) / ds.length : null;
-  return { articles, events, qualified, rejected, drafts, avgDelay, runs: lastRun.data ?? [], recentEvents: recentEvents.data ?? [] };
+  const health = computePipelineHealth((healthRuns.data ?? []) as RunLike[]);
+  return { articles, events, qualified, rejected, drafts, avgDelay, health, runs: lastRun.data ?? [], recentEvents: recentEvents.data ?? [] };
 }
 
 export async function feedData() {

@@ -8,7 +8,7 @@ Automated pipeline that finds **Indian pre-seed and seed funding announcements w
 
 V1 code is complete (pipeline, schema, UI, tests). The Supabase schema has been applied and verified, and Gemini Flash (`gemini-3.8-flash`) structured output and Google Search grounding were checked live. A full live run (4 real sources → Gemini → Supabase) has been executed; see [`docs/live-test-report.md`](docs/live-test-report.md). In the strict 24-hour live window nothing qualified (none was invented); a clearly labelled replay of 5-day-old real articles exercised research, scoring and drafting end to end (2 of 7 eligible startups qualified).
 
-**Live deployment:** https://timed-funding-outreach-engine.vercel.app (operator login required; scheduled runs via Vercel Cron daily at 09:00 IST and GitHub Actions every 2 hours).
+**Live deployment:** https://timed-funding-outreach-engine.vercel.app (no login; public landing page at `/`, dashboard at `/dashboard`; scheduled runs via Vercel Cron daily at 09:00 IST and GitHub Actions every 2 hours; see "Running the pipeline").
 
 ## Problem
 
@@ -50,7 +50,7 @@ Funnel order keeps cost low: cheap age/keyword gates run *before* any model call
 
 ## Database
 
-Migrations live in `supabase/migrations/` (version-controlled): `sources`, `funding_articles`, `startups`, `founders`, `funding_rounds`, `funding_round_sources`, `investors`, `funding_round_investors`, `accelerator_theses`, `scoring_criteria`, `fit_assessments`, `outreach`, `pipeline_runs`, `pipeline_events`, `ai_calls`. RLS is enabled on all tables with no policies (server-only access via the service-role key).
+Migrations live in `supabase/migrations/` (version-controlled): `sources`, `funding_articles`, `startups`, `founders`, `funding_rounds`, `funding_round_sources`, `investors`, `funding_round_investors`, `accelerator_theses`, `scoring_criteria`, `fit_assessments`, `outreach`, `pipeline_runs`, `pipeline_events`, `ai_calls`, `pipeline_lock`. RLS is enabled on all tables with no policies (server-only access via the service-role key).
 
 ## Setup
 
@@ -64,14 +64,16 @@ npm run dev                    # http://localhost:3000
 
 ### Environment variables
 
-All documented in [`.env.example`](.env.example): `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`, `GOOGLE_GENERATIVE_AI_API_KEY`, `GEMINI_MODEL` (no default — you choose), `ADMIN_PASSWORD`, `CRON_SECRET`, optional Gmail OAuth (`GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN`), and pipeline tuning knobs.
+All documented in [`.env.example`](.env.example): `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`, `GOOGLE_GENERATIVE_AI_API_KEY`, `GEMINI_MODEL` (no default — you choose), `CRON_SECRET`, optional Gmail OAuth (`GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN`), and pipeline tuning knobs.
 
 ## Running the pipeline
 
-- **Dashboard button** – "Run pipeline now" (admin only; runs in the background).
+- **Dashboard button** – "Run pipeline now" (runs in the background).
 - **CLI** – `npm run pipeline` (`-- --max=15 --source=inc42_buzz`) prints a per-article trace.
-- **Scheduled (Vercel Cron)** – `vercel.json` calls `GET /api/cron/pipeline` daily at 03:30 UTC (09:00 IST) with `Authorization: Bearer $CRON_SECRET`; this is the most frequent schedule the Hobby plan allows. On Vercel Pro change it to e.g. `0 */2 * * *`.
-- **Scheduled (every 2 hours, any plan)** – `.github/workflows/pipeline-cron.yml` calls the same endpoint every 2 hours; set repo secrets `APP_URL` (your deployment URL) and `CRON_SECRET`.
+- **Scheduled — Vercel Cron (daily anchor).** The project intentionally runs on the **Vercel Hobby (free) plan**, which only allows daily cron jobs. `vercel.json` calls `GET /api/cron/pipeline` at 03:30 UTC (09:00 IST) with `Authorization: Bearer $CRON_SECRET` as a morning safety run.
+- **Scheduled — GitHub Actions (two-hour cadence).** `.github/workflows/pipeline-cron.yml` calls the *same* endpoint every 2 hours. Set repo secrets `APP_URL` (deployment URL) and `CRON_SECRET`. GitHub scheduled workflows can occasionally start late or skip a slot; this is why the dashboard has a **Pipeline Health** card (last successful run, time since, expected cadence, Healthy / Delayed / Warning, latest failure).
+- **Manual** — the dashboard button remains available whenever a run is needed immediately.
+- **Overlapping runs are impossible.** Every trigger takes an atomic database lock (`acquire_pipeline_lock`). A trigger that finds a live lock returns `{"status":"skipped","reason":"already_running"}` without polling sources or calling Gemini. The lock is released after success or failure, expires by itself if a run dies, and runs left `running` after a crash are marked `failed` (`stale_run`).
 
 ## Thesis configuration
 
@@ -98,18 +100,20 @@ Unit tests cover hard filters, deduplication, outreach duplication, score valida
 
 1. Import the GitHub repo into Vercel.
 2. Add the environment variables from `.env.example` (never commit real values).
-3. Deploy. `vercel.json` registers the daily cron; add the GitHub Actions secrets above for 2-hourly runs.
+3. Deploy. `vercel.json` registers the daily cron (Hobby plan); add the GitHub Actions secrets above for 2-hourly runs. Apply all migrations (including `20261012000005_pipeline_run_lock.sql`) to Supabase **before** deploying this version; runs fail without the lock functions.
 
 Helper: after `vercel login && vercel link`, `bash scripts/push-env-to-vercel.sh` copies the variables from `.env.local` to the Vercel project (production) without printing them.
 
 ## Limitations
 
+- GitHub Actions schedules are best-effort and may run late; the daily Vercel run is only a backup, not a second 2-hour trigger.
 - The strict live 24-hour run found no qualifying announcement at test time; full-funnel results come from a labelled replay (see the live-test report).
 - Drafts are created in Supabase only until Gmail OAuth credentials are configured.
 - Multi-company roundup articles ("Funding Wrap") are skipped; only single-company announcements are processed.
 - Founder emails are not discovered; drafts have no recipient address until the operator adds one.
 - Ambiguous entity matching is deterministic only (no Gemini-assisted fuzzy matching).
-- Single shared admin password, no per-user accounts.
+- **No authentication.** The password gate was removed by request: anyone with the URL can read data, edit the thesis, change draft status and trigger runs (each run spends Gemini quota; overlapping runs are blocked by the run lock). Only `/api/cron/pipeline` still needs `CRON_SECRET`. Re-add auth before sharing the URL widely or storing real contact data.
+- No per-user accounts.
 - Research depends on publicly reachable pages; paywalled/blocked sites yield less evidence (recorded as unknown).
 
 ## Future improvements

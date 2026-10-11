@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
+  --surface: #ffffff;
 }
 
 @theme inline {
@@ -17,3 +20,63 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+/*
+ * Dark mode. The app UI is written with Tailwind's slate/tone palettes, so instead of sprinkling
+ * `dark:` variants everywhere the palette variables are remapped when <html class="dark">.
+ * `text-white` (on indigo buttons) is deliberately left alone; only the white *surface* is remapped.
+ */
+.dark {
+  color-scheme: dark;
+  --background: #0b1120;
+  --foreground: #e2e8f0;
+  --surface: #111a2e;
+
+  --color-slate-50: #162036;
+  --color-slate-100: #1b2742;
+  --color-slate-200: #26345a;
+  --color-slate-300: #34456f;
+  --color-slate-400: #7d8ba6;
+  --color-slate-500: #98a5bb;
+  --color-slate-600: #b0bacb;
+  --color-slate-700: #cbd5e1;
+  --color-slate-800: #e2e8f0;
+  --color-slate-900: #f1f5f9;
+
+  --color-emerald-50: #0d2b22;
+  --color-emerald-600: #34d399;
+  --color-emerald-700: #6ee7b7;
+  --color-rose-50: #3a1622;
+  --color-rose-600: #fb7185;
+  --color-rose-700: #fda4af;
+  --color-rose-800: #fecdd3;
+  --color-amber-50: #36270b;
+  --color-amber-200: #5c4310;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-amber-900: #fef3c7;
+  --color-sky-50: #0c2638;
+  --color-sky-700: #7dd3fc;
+  --color-indigo-50: #1d2150;
+  --color-indigo-700: #a5b4fc;
+}
+.dark .bg-white { background-color: var(--surface); }
+.dark input, .dark select, .dark textarea { background-color: var(--surface); color: var(--foreground); }
+.dark ::placeholder { color: #64748b; }
+
+/* Landing page decoration */
+.landing-glow {
+  background:
+    radial-gradient(60rem 30rem at 15% -10%, rgb(99 102 241 / 0.22), transparent 60%),
+    radial-gradient(50rem 28rem at 95% 5%, rgb(56 189 248 / 0.18), transparent 60%);
+}
+.landing-grid {
+  background-image:
+    linear-gradient(to right, rgb(100 116 139 / 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(100 116 139 / 0.12) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%);
+}
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
