@@ -6,7 +6,7 @@ Automated pipeline that finds **Indian pre-seed and seed funding announcements w
 
 ## Status
 
-V1 code is complete (pipeline, schema, UI, tests). **Live-data validation against Supabase + Gemini is pending** — see [Limitations](#limitations). The live test report will be added to `docs/` once it has been run.
+V1 code is complete (pipeline, schema, UI, tests). The Supabase schema has been applied and verified, and Gemini Flash (`gemini-3.8-flash`) structured output and Google Search grounding were checked live. **A full live pipeline run against Supabase is still pending** — see [Limitations](#limitations). The live test report will be added to `docs/` once it has been run.
 
 ## Problem
 
@@ -99,7 +99,7 @@ Unit tests cover hard filters, deduplication, outreach duplication, score valida
 
 ## Limitations
 
-- Live end-to-end run against real Supabase/Gemini not yet performed at the time of this commit.
+- A full live end-to-end pipeline run (ingest → draft) has not yet been recorded at the time of this commit.
 - Multi-company roundup articles ("Funding Wrap") are skipped; only single-company announcements are processed.
 - Founder emails are not discovered; drafts have no recipient address until the operator adds one.
 - Ambiguous entity matching is deterministic only (no Gemini-assisted fuzzy matching).
