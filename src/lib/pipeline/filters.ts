@@ -17,6 +17,11 @@ export interface HardFilterInput {
   now: Date;
   /** undefined = not checked yet (pre-deduplication pass). */
   alreadyContacted?: boolean;
+  /**
+   * When true, a completely unknown country (no HQ, no Indian-startup verdict) does not fail
+   * the geography check yet; it is re-verified against research before scoring.
+   */
+  deferUnknownGeography?: boolean;
 }
 
 export interface HardFilterResult {
@@ -48,7 +53,7 @@ export function evaluateHardFilters(cfg: HardFilterConfig, input: HardFilterInpu
   const ageHours = hoursBetween(input.now, input.announcedAt);
   const checks = {
     funding_announcement: input.isFundingAnnouncement,
-    geography: passesGeography(cfg, input),
+    geography: passesGeography(cfg, input) || (input.deferUnknownGeography === true && input.hqCountry == null && input.isIndianStartup == null),
     stage: cfg.allowed_stages.map((s) => s.toLowerCase()).includes(input.stage.toLowerCase()),
     recency: ageHours <= cfg.max_announcement_age_hours,
     not_contacted: input.alreadyContacted === undefined ? null : !input.alreadyContacted,

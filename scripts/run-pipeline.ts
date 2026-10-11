@@ -13,8 +13,20 @@ async function main() {
   const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
   const max = arg("max") ? Number(arg("max")) : undefined;
   const sourceKeys = arg("source")?.split(",");
+  // Testing only: re-open recent articles that were rejected purely for age, and treat them as eligible.
+  const replay = arg("replay-hours") ? Number(arg("replay-hours")) : undefined;
+  if (replay) {
+    const { db } = await import("../src/lib/supabase/admin");
+    const cutoff = new Date(Date.now() - replay * 3_600_000).toISOString();
+    const { count } = await db()
+      .from("funding_articles")
+      .update({ processing_status: "pending", rejection_reason: null, processed_at: null }, { count: "exact" })
+      .eq("rejection_reason", "announcement_too_old")
+      .gte("source_published_at", cutoff);
+    console.log(`REPLAY MODE: re-opened ${count} age-rejected articles from the last ${replay}h (testing only; thesis unchanged)`);
+  }
 
-  const summary = await runPipeline({ ai: getAI() }, { trigger: "cli", force: true, maxArticles: max, sourceKeys });
+  const summary = await runPipeline({ ai: getAI() }, { trigger: "cli", force: true, maxArticles: max, sourceKeys, replayMaxAgeHours: replay });
   const { trace, ...rest } = summary;
   console.log(JSON.stringify(rest, null, 2));
   console.log("\nPER-ARTICLE TRACE (live data)");

@@ -17,7 +17,7 @@ import { selectDraftProvider } from "@/lib/outreach/providers";
 import type { DraftProvider } from "@/lib/outreach/providers/types";
 import { canonicalizeUrl, errorMessage, mapLimit } from "@/lib/util/text";
 import type { RejectionReason, SourceRow } from "@/types/domain";
-import { evaluateHardFilters, type HardFilterConfig } from "./filters";
+import { evaluateHardFilters, passesGeography, type HardFilterConfig } from "./filters";
 import { PipelineLogger } from "./logger";
 import { looksLikeFundingNews } from "./prefilter";
 
@@ -39,6 +39,12 @@ export interface RunOptions {
   deadline?: number;
   /** Skip ingestion and only process already-stored pending articles. */
   skipIngest?: boolean;
+  /**
+   * REPLAY MODE (testing only): treat articles up to N hours old as eligible, WITHOUT changing the
+   * stored thesis. Used to exercise the full funnel on real-but-older articles when nothing
+   * qualifies inside the live window. Never used by cron/manual runs.
+   */
+  replayMaxAgeHours?: number;
 }
 
 export interface TraceRow {
@@ -103,6 +109,7 @@ export async function runPipeline(deps: PipelineDeps, opts: RunOptions): Promise
   const run = unwrap(await db().from("pipeline_runs").insert({ trigger: opts.trigger }).select("id").single<{ id: string }>(), "create run");
   summary.runId = run.id;
   const log = new PipelineLogger(run.id);
+  replayMaxAge = opts.replayMaxAgeHours;
   const recordError = async (scope: string, err: unknown, entity?: { type: string; id: string | null }) => {
     const message = errorMessage(err);
     summary.errors.push({ scope, message });
@@ -221,9 +228,15 @@ async function ingestSources(ctx: Ctx, opts: RunOptions) {
 
 /* ───────────────────────────── Stage 2: per-article funnel ───────────────────────────── */
 
+let replayMaxAge: number | undefined;
+
 async function loadFilterConfig(): Promise<HardFilterConfig> {
   const { thesis } = await loadActiveScoringConfig();
-  return { allowed_countries: thesis.allowed_countries, allowed_stages: thesis.allowed_stages, max_announcement_age_hours: thesis.max_announcement_age_hours };
+  return {
+    allowed_countries: thesis.allowed_countries,
+    allowed_stages: thesis.allowed_stages,
+    max_announcement_age_hours: replayMaxAge ?? thesis.max_announcement_age_hours,
+  };
 }
 
 async function rejectArticle(ctx: Ctx, a: ArticleRow, reason: RejectionReason | string, extra?: Record<string, unknown>) {
@@ -335,6 +348,7 @@ async function processArticle(ctx: Ctx, a: ArticleRow, cfg: HardFilterConfig) {
   const announcedAt = new Date(a.source_published_at ?? a.first_seen_at);
   const pre = evaluateHardFilters(cfg, {
     isFundingAnnouncement: true, isIndianStartup: c.is_indian_startup, hqCountry: c.hq_country, stage: c.funding_stage, announcedAt, now: ctx.now(),
+    deferUnknownGeography: true,
   });
   if (!pre.passed) {
     await rejectArticle(ctx, a, pre.reason!);
@@ -442,6 +456,14 @@ async function evaluateRound(ctx: Ctx, roundId: string): Promise<RoundEval> {
     );
     await persistEnrichment(startup.id, research, ctx.log);
     await ctx.log.event("startup", startup.id, "startup_enriched", `${startup.name} enriched`, { sources: research.sources.length, warnings: research.warnings });
+
+    // Geography is re-verified against research (it may have been unknown in the article).
+    const cfg = await loadFilterConfig();
+    if (!passesGeography(cfg, { hqCountry: research.profile.hq_country ?? startup.hq_country, isIndianStartup: null })) {
+      await setRound(roundId, { status: "rejected", rejection_reason: "wrong_geography" });
+      await ctx.log.event("round", roundId, "round_rejected", `${startup.name}: HQ country not confirmed as allowed (${research.profile.hq_country ?? "unknown"})`, { reason: "wrong_geography" });
+      return { eligibility: "rejected: wrong_geography (after research)", score: null, draft: "none" };
+    }
 
     // Fit scoring against the ACTIVE thesis (loaded at this moment from Supabase).
     const investorRows = (await db().from("funding_round_investors").select("investors(name)").eq("funding_round_id", roundId)).data as unknown as { investors: { name: string } }[] | null;

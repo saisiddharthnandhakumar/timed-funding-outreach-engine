@@ -41,6 +41,13 @@ describe("hard filters", () => {
     expect(evaluateHardFilters(cfg, { ...base, hqCountry: null, isIndianStartup: true }).passed).toBe(true);
     expect(evaluateHardFilters(cfg, { ...base, hqCountry: null, isIndianStartup: null }).reason).toBe("wrong_geography");
   });
+  it("unknown geography can be deferred to research, but a known foreign country never is", () => {
+    const unknown = { ...base, hqCountry: null, isIndianStartup: null };
+    expect(evaluateHardFilters(cfg, unknown).reason).toBe("wrong_geography");
+    expect(evaluateHardFilters(cfg, { ...unknown, deferUnknownGeography: true }).passed).toBe(true);
+    expect(evaluateHardFilters(cfg, { ...base, hqCountry: "United States", isIndianStartup: false, deferUnknownGeography: true }).reason).toBe("wrong_geography");
+    expect(evaluateHardFilters(cfg, { ...unknown, isIndianStartup: false, deferUnknownGeography: true }).reason).toBe("wrong_geography");
+  });
   it("is driven by config, not code: allowing the US flips the verdict", () => {
     const us = { ...base, hqCountry: "United States", isIndianStartup: false };
     expect(evaluateHardFilters({ ...cfg, allowed_countries: ["India", "United States"] }, us).passed).toBe(true);

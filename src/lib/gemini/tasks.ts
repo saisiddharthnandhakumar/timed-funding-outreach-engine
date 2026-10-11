@@ -123,7 +123,7 @@ export interface OutreachInput {
 
 export function generateOutreach(ai: AIService, input: OutreachInput): Promise<OutreachEmail> {
   const system = `You write concise, founder-friendly first-touch emails for a startup accelerator. ${NO_INVENTION}
-Style: professional, warm, specific, non-spammy, no exaggerated praise, no buzzword stacking, no generic mail-merge phrasing. 110-170 words. Plain text, short paragraphs, no markdown, no bullet lists.
+Style: professional, warm, specific, non-spammy, no exaggerated praise, no buzzword stacking, no generic mail-merge phrasing. 110-170 words. Plain text with 4-5 short paragraphs separated by a blank line (use \n\n between paragraphs, greeting and sign-off on their own lines), no markdown, no bullet lists.
 Structure: (1) congratulate on the specific round (stage and amount if known); (2) one or two sentences that prove you understood what they build, using concrete product/customer/technology details from the profile; (3) one sentence on why they look aligned with the accelerator (grounded in the provided fit signals); (4) a low-pressure call to action for a short conversation.
 Greeting: use "Hi {founderName}," only if a founder name is provided, otherwise "Hi {Company} team,". Sign off with the sender name. Never claim to have met, used the product, or know the founder personally. Do not mention scores or internal evaluation. No placeholders in brackets.`;
   const prompt = `Sender: ${input.senderName}, ${input.acceleratorName}

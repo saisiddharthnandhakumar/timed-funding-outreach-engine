@@ -72,6 +72,15 @@ describe("event deduplication", () => {
     expect(matchRound({ stage: "seed", amount: 6_000_000, currency: "USD", announcement_date: "2026-10-12" }, [existing])).toBeNull();
     expect(matchRound({ stage: "seed", amount: null, currency: null, announcement_date: "2026-12-30" }, [existing])).toBeNull();
   });
+  it("name variants of the same company (Nimbus / Nimbus AI / Nimbus Technologies) collapse to one startup", async () => {
+    const repo = new MemoryRepo();
+    await resolveStartupAndRound(repo, report("a1", "et", "Nimbus", "2026-10-11T04:00:00Z"));
+    await resolveStartupAndRound(repo, report("a2", "inc42", "Nimbus AI", "2026-10-11T05:00:00Z"));
+    await resolveStartupAndRound(repo, report("a3", "ys", "Nimbus Technologies Pvt Ltd", "2026-10-11T06:00:00Z"));
+    expect(repo.startups).toHaveLength(1);
+    expect(repo.rounds).toHaveLength(1);
+    expect(repo.sources).toHaveLength(3);
+  });
   it("domain is a stronger identity than name", () => {
     const existing: StartupKey[] = [{ id: "s1", name: "Nimbus", normalized_name: "nimbus", domain: "nimbus.ai" }];
     expect(matchStartup({ name: "Totally Different Name", domain: "nimbus.ai" }, existing)?.method).toBe("domain");
@@ -81,7 +90,10 @@ describe("event deduplication", () => {
 describe("normalisation", () => {
   it("strips legal suffixes and punctuation", () => {
     expect(normalizeCompanyName("Sunfox Technologies Pvt. Ltd.")).toBe("sunfox");
-    expect(normalizeCompanyName("Nimbus AI")).toBe("nimbusai");
+    expect(normalizeCompanyName("Nimbus AI")).toBe("nimbus");
+    expect(normalizeCompanyName("Nimbus")).toBe("nimbus");
+    expect(normalizeCompanyName("The Nimbus Labs")).toBe("nimbus");
+    expect(normalizeCompanyName("AI")).toBe("ai"); // never strips the last remaining token
     expect(normalizeCompanyName("  Café & Co ")).toBe("cafeandco");
   });
   it("canonicalises URLs", () => {
