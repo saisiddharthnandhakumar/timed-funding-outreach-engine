@@ -59,3 +59,12 @@ Thesis versioning was proven in Postgres inside a transaction that was rolled ba
 - ET Entrepreneur's funding RSS was quiet (newest item 9 Oct) while Entrackr/YourStory had newer items — source speed comparisons need several days of data.
 - `generate_outreach` averages ~28 s per call and `synthesize_profile` ~10 s; a full run on ~10 candidates takes ~3 minutes, well inside the 300 s function limit with the built-in time budget.
 - Roundup articles ("Funding Wrap", weekly roundups) are skipped in V1.
+
+## 5. Production deployment check (Vercel)
+
+URL: https://timed-funding-outreach-engine.vercel.app · checked 2026-10-11 ~23:37 IST.
+
+- Unauthenticated requests redirect to `/login`; a forged cookie is rejected; `/api/cron/pipeline` returns 401 without the bearer token.
+- Authenticated: Dashboard, Feed, Qualified, Drafts, Settings and Sources all return 200 and render the stored real data.
+- "Run pipeline now" on the deployed app: run completed in ~7 s, 4/4 sources polled, 84 articles seen, 0 new (idempotent), no errors.
+- GitHub Actions `pipeline-cron` (manual dispatch) called the deployed cron endpoint with the shared secret: success.

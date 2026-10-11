@@ -8,6 +8,8 @@ Automated pipeline that finds **Indian pre-seed and seed funding announcements w
 
 V1 code is complete (pipeline, schema, UI, tests). The Supabase schema has been applied and verified, and Gemini Flash (`gemini-3.8-flash`) structured output and Google Search grounding were checked live. A full live run (4 real sources → Gemini → Supabase) has been executed; see [`docs/live-test-report.md`](docs/live-test-report.md). In the strict 24-hour live window nothing qualified (none was invented); a clearly labelled replay of 5-day-old real articles exercised research, scoring and drafting end to end (2 of 7 eligible startups qualified).
 
+**Live deployment:** https://timed-funding-outreach-engine.vercel.app (operator login required; scheduled runs via Vercel Cron daily at 09:00 IST and GitHub Actions every 2 hours).
+
 ## Problem
 
 Rohit recruits for an early-stage accelerator. Manually watching startup-news sites, logging deals in a spreadsheet, researching each startup and writing outreach is slow and misses announcements. The goal: each morning, personalised drafts are waiting for startups that announced funding recently, fit the thesis, and haven't been contacted. Poor-fit startups need no manual review.
