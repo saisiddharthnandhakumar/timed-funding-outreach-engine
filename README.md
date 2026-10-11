@@ -68,7 +68,8 @@ All documented in [`.env.example`](.env.example): `NEXT_PUBLIC_SUPABASE_URL`, `S
 
 - **Dashboard button** – "Run pipeline now" (admin only; runs in the background).
 - **CLI** – `npm run pipeline` (`-- --max=15 --source=inc42_buzz`) prints a per-article trace.
-- **Scheduled** – `vercel.json` calls `GET /api/cron/pipeline` every 2 hours with `Authorization: Bearer $CRON_SECRET`. On Vercel Hobby (daily-only cron) remove the `crons` entry and use `.github/workflows/pipeline-cron.yml` (secrets `APP_URL`, `CRON_SECRET`).
+- **Scheduled (Vercel Cron)** – `vercel.json` calls `GET /api/cron/pipeline` daily at 03:30 UTC (09:00 IST) with `Authorization: Bearer $CRON_SECRET`; this is the most frequent schedule the Hobby plan allows. On Vercel Pro change it to e.g. `0 */2 * * *`.
+- **Scheduled (every 2 hours, any plan)** – `.github/workflows/pipeline-cron.yml` calls the same endpoint every 2 hours; set repo secrets `APP_URL` (your deployment URL) and `CRON_SECRET`.
 
 ## Thesis configuration
 
@@ -95,7 +96,9 @@ Unit tests cover hard filters, deduplication, outreach duplication, score valida
 
 1. Import the GitHub repo into Vercel.
 2. Add the environment variables from `.env.example` (never commit real values).
-3. Deploy. The cron in `vercel.json` activates on plans that allow sub-daily crons.
+3. Deploy. `vercel.json` registers the daily cron; add the GitHub Actions secrets above for 2-hourly runs.
+
+Helper: after `vercel login && vercel link`, `bash scripts/push-env-to-vercel.sh` copies the variables from `.env.local` to the Vercel project (production) without printing them.
 
 ## Limitations
 
