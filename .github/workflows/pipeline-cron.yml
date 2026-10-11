@@ -1,0 +1,16 @@
+# Optional scheduler for accounts where Vercel Cron is limited to once a day (Hobby plan).
+# Needs repository secrets: APP_URL (e.g. https://your-app.vercel.app) and CRON_SECRET.
+name: pipeline-cron
+on:
+  schedule:
+    - cron: "15 */2 * * *"
+  workflow_dispatch:
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the pipeline endpoint
+        run: |
+          curl --fail --silent --show-error --max-time 320 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/pipeline"
