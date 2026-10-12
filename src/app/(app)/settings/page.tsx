@@ -1,12 +1,14 @@
-import { thesisData, configured } from "@/lib/queries";
-import { PageHeader, SetupNotice, StatusBadge } from "@/components/ui";
+import type { Metadata } from "next";
+import { SetupNotice, DisclosureSection, StatusLabel } from "@/components/ui";
 import { ThesisForm } from "@/components/thesis-form";
 import { formatDateTime } from "@/lib/format";
+import { configured, thesisData } from "@/lib/queries";
 import type { ThesisInput } from "@/lib/thesis/schema";
 
+export const metadata: Metadata = { title: "Investment thesis · Settings" };
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+export default async function ThesisSettingsPage() {
   if (!configured()) return <SetupNotice message="Supabase is not configured." />;
   const { theses, active, criteria } = await thesisData();
   if (!active) return <SetupNotice message="No active thesis found. Apply the seed migration (npm run db:migrate)." />;
@@ -30,23 +32,22 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Thesis Settings"
-        subtitle="Edit the accelerator thesis, filters and scoring weights. Saving creates a new version; every future assessment uses it automatically, and past assessments keep the version they were scored under. No redeploy needed."
-        actions={<span className="text-sm text-slate-500">Active: version {active.version}</span>}
-      />
-      <ThesisForm key={active.id} initial={initial} version={active.version} />
-      <h2 className="mb-3 mt-12 text-sm font-semibold text-slate-800">Version history</h2>
-      <ul className="space-y-1 text-sm text-slate-600">
-        {theses.map((t) => (
-          <li key={t.id} className="flex items-center gap-3">
-            <span className="w-16 font-medium">v{t.version}</span>
-            <span className="w-40">{formatDateTime(t.created_at)}</span>
-            <span>min score {t.minimum_fit_score} · {t.allowed_stages.join(", ")}</span>
-            {t.active && <StatusBadge status="completed" />}
-          </li>
-        ))}
-      </ul>
+      <p className="-mt-2 mb-2 text-meta text-ink-3">Changes apply to every future assessment, with no redeploy. Startups already scored keep the version they were scored under.</p>
+      <ThesisForm initial={initial} version={active.version} />
+      <div className="mt-6 pb-16">
+        <DisclosureSection title="Version history" summary={`Current: v${active.version}`} quiet>
+          <ul className="divide-y divide-line">
+            {theses.map((t) => (
+              <li key={t.id} className="flex flex-wrap items-center gap-x-6 gap-y-1 py-2.5 text-meta text-ink-2">
+                <span className="w-10 font-medium text-ink">v{t.version}</span>
+                <span className="w-36">{formatDateTime(t.created_at)}</span>
+                <span className="flex-1">Minimum fit {t.minimum_fit_score} · {t.allowed_stages.join(", ")}</span>
+                {t.active && <StatusLabel label={{ text: "Active", tone: "positive" }} />}
+              </li>
+            ))}
+          </ul>
+        </DisclosureSection>
+      </div>
     </>
   );
 }
