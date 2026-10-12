@@ -8,13 +8,7 @@ Automated pipeline that finds **Indian pre-seed and seed funding announcements w
 
 V1 code is complete (pipeline, schema, UI, tests). The Supabase schema has been applied and verified, and Gemini Flash (`gemini-3.8-flash`) structured output and Google Search grounding were checked live. A full live run (4 real sources → Gemini → Supabase) has been executed; see [`docs/live-test-report.md`](docs/live-test-report.md). In the strict 24-hour live window nothing qualified (none was invented); a clearly labelled replay of 5-day-old real articles exercised research, scoring and drafting end to end (2 of 7 eligible startups qualified).
 
-**Live deployment:** https://timed-funding-outreach-engine.vercel.app (no login; public landing page at `/`, the app opens at **Today** (`/today`); scheduled runs via Vercel Cron daily at 09:00 IST and GitHub Actions every 2 hours; see "Running the pipeline").
-
-## Using the app (scout workflow)
-
-The UI is organised around the scout's day, not the pipeline: **Today** (who to act on now) → **Opportunities** (every qualified startup; `/opportunities/[id]` tells the story: decision header, why now, why it fits, outreach) → **Drafts** (a focused reading surface; approve, then send) · **Discoveries** (the wider funding feed, rejected items hidden by default) · **Settings** (Investment thesis, Discovery/sources, Integrations, System). `⌘K` searches companies, founders and sectors; the top-bar status chip opens system health. Technical detail (scoring grid, evidence, IDs, raw statuses) is one click deeper, never removed. See `docs/ui-redesign-plan.md`, `docs/ui-redesign-audit.md` and `docs/ui-functionality-matrix.md`.
-
-Old URLs redirect: `/dashboard`→`/today`, `/qualified`→`/opportunities`, `/startups/[id]`→`/opportunities/[id]`, `/feed`→`/discoveries`, `/sources`→`/settings/discovery`.
+**Live deployment:** https://timed-funding-outreach-engine.vercel.app (no login; public landing page at `/`, dashboard at `/dashboard`; scheduled runs via Vercel Cron daily at 09:00 IST and GitHub Actions every 2 hours; see "Running the pipeline").
 
 ## Problem
 
@@ -80,17 +74,17 @@ All documented in [`.env.example`](.env.example): `NEXT_PUBLIC_SUPABASE_URL`, `S
 - **Dashboard button** – "Run pipeline now" (runs in the background).
 - **CLI** – `npm run pipeline` (`-- --max=15 --source=inc42_buzz`) prints a per-article trace.
 - **Scheduled — Vercel Cron (daily anchor).** The project intentionally runs on the **Vercel Hobby (free) plan**, which only allows daily cron jobs. `vercel.json` calls `GET /api/cron/pipeline` at 03:30 UTC (09:00 IST) with `Authorization: Bearer $CRON_SECRET` as a morning safety run.
-- **Scheduled — GitHub Actions (two-hour cadence).** `.github/workflows/pipeline-cron.yml` calls the *same* endpoint every 2 hours. Set repo secrets `APP_URL` (deployment URL) and `CRON_SECRET`. GitHub scheduled workflows can occasionally start late or skip a slot; this is why the top bar always shows **System healthy · Last scan N min ago**; clicking it (or opening Settings → System) shows the last successful run, time since, next scheduled scan, source health and the latest failure.
-- **Manual** — **Scan now** (Today, the system sheet and Settings → System) runs the pipeline immediately.
+- **Scheduled — GitHub Actions (two-hour cadence).** `.github/workflows/pipeline-cron.yml` calls the *same* endpoint every 2 hours. Set repo secrets `APP_URL` (deployment URL) and `CRON_SECRET`. GitHub scheduled workflows can occasionally start late or skip a slot; this is why the dashboard has a **Pipeline Health** card (last successful run, time since, expected cadence, Healthy / Delayed / Warning, latest failure).
+- **Manual** — the dashboard button remains available whenever a run is needed immediately.
 - **Overlapping runs are impossible.** Every trigger takes an atomic database lock (`acquire_pipeline_lock`). A trigger that finds a live lock returns `{"status":"skipped","reason":"already_running"}` without polling sources or calling Gemini. The lock is released after success or failure, expires by itself if a run dies, and runs left `running` after a crash are marked `failed` (`stale_run`).
 
 ## Live pipeline progress
 
-While a scan runs, **Today** shows five plain steps (Scanning sources, Reviewing funding announcements, Researching candidates, Scoring fit, Preparing drafts); **Settings → System** shows the full panel with an overall bar and one bar per stage (discover, age/keyword gates, Gemini classification, hard filters & dedupe, research, fit scoring, contact discovery, drafts) with done/total counts, per-stage timing and a "Now:" line naming what the backend is doing (e.g. "Researching Nimbus AI"). The run writes its progress to `pipeline_runs.progress_json` (throttled to about one write per second); the page polls `/api/pipeline/progress` every 2 seconds while a run is active and every 15 seconds otherwise. Stages after classification grow as articles reach them, because the pipeline is a per-article funnel. Requires migration `20261012000007_pipeline_progress.sql`; without it the pipeline runs normally and the panel says progress is unavailable.
+The dashboard's **Pipeline progress** panel shows an overall bar and one bar per stage (discover, age/keyword gates, Gemini classification, hard filters & dedupe, research, fit scoring, contact discovery, drafts) with done/total counts, per-stage timing and a "Now:" line naming what the backend is doing (e.g. "Researching Nimbus AI"). The run writes its progress to `pipeline_runs.progress_json` (throttled to about one write per second); the page polls `/api/pipeline/progress` every 2 seconds while a run is active and every 15 seconds otherwise. Stages after classification grow as articles reach them, because the pipeline is a per-article funnel. Requires migration `20261012000007_pipeline_progress.sql`; without it the pipeline runs normally and the panel says progress is unavailable.
 
 ## Thesis configuration
 
-Open **Settings → Investment thesis** in the UI (the thesis text leads; scoring weights, recency bands and stage points are under *Advanced scoring*). Geography, stages, sectors, exclusions, business models, max age, minimum score, scoring weights (validated to total 100), recency bands, stage points and the natural-language thesis are all editable. Saving creates a **new thesis version** (atomic Postgres function) and activates it; the scorer reads the active row at scoring time, so no redeploy is needed. Each `fit_assessment` stores its `thesis_id`, `thesis_version` and a snapshot of the criteria used, so history never changes.
+Open **Thesis Settings** in the UI. Geography, stages, sectors, exclusions, business models, max age, minimum score, scoring weights (validated to total 100), recency bands, stage points and the natural-language thesis are all editable. Saving creates a **new thesis version** (atomic Postgres function) and activates it; the scorer reads the active row at scoring time, so no redeploy is needed. Each `fit_assessment` stores its `thesis_id`, `thesis_version` and a snapshot of the criteria used, so history never changes.
 
 ## Deduplication
 
@@ -118,7 +112,7 @@ Every address gets syntax + MX checks. Hunter (optional, free-tier `HUNTER_API_K
 | `pattern_guessed` | Generated by us; not published anywhere |
 | `unverified` | Only in model text, or the domain has no mail server |
 
-**Preferred contact (strict order):** publicly-confirmed founder email → provider-verified founder email → publicly-confirmed company email (partnerships/general before support) → public contact form → `not_found`. All founder emails are kept; unverified candidates are stored separately. Only `publicly_confirmed` / `provider_verified` addresses are ever prefilled as a draft's recipient. Results show on the **startup page** (Outreach section: preferred contact with copy button; “Contact details” lists every discovered address with source, evidence, status and last checked) and each draft’s “Why this message” checks.
+**Preferred contact (strict order):** publicly-confirmed founder email → provider-verified founder email → publicly-confirmed company email (partnerships/general before support) → public contact form → `not_found`. All founder emails are kept; unverified candidates are stored separately. Only `publicly_confirmed` / `provider_verified` addresses are ever prefilled as a draft's recipient. Results show on the **startup page** (copy buttons, source, evidence, status, last checked) and the **Qualified** table.
 
 Re-running: *Re-run contact search* on the startup page, or `npm run contacts -- --startup=<uuid> [--force]` / `npm run contacts -- --all-qualified --limit=50`. Previously qualified startups with no result yet are backfilled automatically (up to `CONTACT_BACKFILL_PER_RUN` per pipeline run); results are cached for `CONTACT_REENRICH_DAYS` (default 14). Limits: 3 concurrent startups, 8 pages each, retries with backoff and jitter, a per-host delay, monthly budgets for the search and verifier calls. One failing startup never fails the batch.
 

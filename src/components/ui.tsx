@@ -1,150 +1,94 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
-import type { Label, Tone } from "@/lib/labels";
-import { AlertIcon, ChevronRight } from "./icons";
 
-export const cx = (...a: (string | false | null | undefined)[]) => a.filter(Boolean).join(" ");
-
-/* ─── Buttons ──────────────────────────────────────────────────────────────────────────────────
- * One primary per screen. `buttonClass` styles <button> and <Link> alike. */
-type Variant = "primary" | "secondary" | "ghost" | "danger";
-const VARIANT: Record<Variant, string> = {
-  primary: "bg-accent text-accent-ink hover:bg-accent-hover border border-transparent",
-  secondary: "bg-surface text-ink border border-control hover:bg-sunken",
-  ghost: "text-ink-2 border border-transparent hover:bg-sunken hover:text-ink",
-  danger: "bg-surface text-bad border border-control hover:bg-bad-soft",
-};
-export function buttonClass(variant: Variant = "secondary", size: "sm" | "md" = "md", extra = "") {
-  return cx(
-    "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md font-medium whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50",
-    size === "sm" ? "h-8 px-3 text-meta" : "h-9 px-4 text-meta",
-    VARIANT[variant],
-    extra,
-  );
-}
-
-/* ─── Page structure ───────────────────────────────────────────────────────────────────────── */
-export function PageHeader({ title, eyebrow, description, actions }: { title: ReactNode; eyebrow?: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   return (
-    <header className="mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-      <div className="min-w-0">
-        {eyebrow && <p className="mb-1 text-meta text-ink-3">{eyebrow}</p>}
-        <h1 className="text-page text-ink">{title}</h1>
-        {description && <p className="mt-2 max-w-2xl text-body text-ink-2">{description}</p>}
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+        {subtitle && <p className="mt-1 max-w-3xl text-sm text-slate-500">{subtitle}</p>}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
-    </header>
+      {actions}
+    </div>
   );
 }
 
-export function Section({ title, aside, children, className = "" }: { title?: ReactNode; aside?: ReactNode; children: ReactNode; className?: string }) {
+export function Card({ title, children, className = "" }: { title?: string; children: ReactNode; className?: string }) {
   return (
-    <section className={cx("py-7 first:pt-0", className)}>
-      {(title || aside) && (
-        <div className="mb-3 flex items-baseline justify-between gap-4">
-          {title && <h2 className="text-heading text-ink">{title}</h2>}
-          {aside && <div className="hidden text-meta text-ink-3 sm:block">{aside}</div>}
-        </div>
-      )}
-      {children}
+    <section className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
+      {title && <h2 className="border-b border-slate-100 px-5 py-3 text-sm font-semibold text-slate-800">{title}</h2>}
+      <div className="p-5">{children}</div>
     </section>
   );
 }
 
-/** Native <details>: keyboard + screen-reader accessible, no JS. Content is one interaction away. */
-export function DisclosureSection({
-  title, summary, children, defaultOpen = false, quiet = false, className = "",
-}: { title: ReactNode; summary?: ReactNode; children: ReactNode; defaultOpen?: boolean; quiet?: boolean; className?: string }) {
+export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
-    <details open={defaultOpen} className={cx("disclosure group border-t border-line", className)}>
-      <summary className="flex min-h-11 items-center gap-2 rounded-md py-3 text-ink">
-        <ChevronRight className="chev shrink-0 text-ink-3 transition-transform duration-200" />
-        <span className={cx("text-body", quiet ? "text-ink-2" : "font-medium")}>{title}</span>
-        {summary && <span className="ml-auto pl-4 text-meta text-ink-3">{summary}</span>}
-      </summary>
-      <div className="pb-6 pl-6">{children}</div>
-    </details>
-  );
-}
-
-/** Label / value pairs as a calm definition grid. Empty values are dropped, never shown as “Unknown”. */
-export function DetailGroup({ items, columns = 3 }: { items: [string, ReactNode][]; columns?: 2 | 3 }) {
-  const rows = items.filter(([, v]) => v != null && v !== "" && v !== false);
-  if (rows.length === 0) return null;
-  return (
-    <dl className={cx("grid gap-x-8 gap-y-4", columns === 3 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2")}>
-      {rows.map(([k, v]) => (
-        <div key={k} className="min-w-0">
-          <dt className="text-label text-ink-3">{k}</dt>
-          <dd className="mt-0.5 break-words text-body text-ink">{v}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-/** Compact inline statistics (page headers, summaries). Never a grid of giant cards. */
-export function CompactStat({ value, label }: { value: ReactNode; label: string }) {
-  return (
-    <div className="flex items-baseline gap-1.5">
-      <span className="text-body font-semibold tabular-nums text-ink">{value}</span>
-      <span className="text-meta text-ink-3">{label}</span>
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="mt-1 text-2xl font-semibold text-slate-900">{value}</div>
+      {hint && <div className="mt-1 text-xs text-slate-400">{hint}</div>}
     </div>
   );
 }
 
-/* ─── Status ───────────────────────────────────────────────────────────────────────────────── */
-const DOT: Record<Tone, string> = { neutral: "bg-ink-3", positive: "bg-ok", caution: "bg-warn", negative: "bg-bad", accent: "bg-accent" };
-const TEXT: Record<Tone, string> = { neutral: "text-ink-2", positive: "text-ink", caution: "text-ink", negative: "text-bad", accent: "text-ink" };
+const TONES: Record<string, string> = {
+  green: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  red: "bg-rose-50 text-rose-700 ring-rose-600/20",
+  amber: "bg-amber-50 text-amber-700 ring-amber-600/20",
+  blue: "bg-sky-50 text-sky-700 ring-sky-600/20",
+  indigo: "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
+  slate: "bg-slate-100 text-slate-600 ring-slate-500/20",
+};
 
-/** Dot + words. Colour reinforces the text, never replaces it. */
-export function StatusLabel({ label, title, muted = false }: { label: Label; title?: string; muted?: boolean }) {
-  return (
-    <span className={cx("inline-flex items-center gap-1.5 whitespace-nowrap text-meta", muted ? "text-ink-3" : TEXT[label.tone])} title={title}>
-      <span className={cx("size-1.5 shrink-0 rounded-full", muted ? "bg-line-strong" : DOT[label.tone])} aria-hidden="true" />
-      {label.text}
-    </span>
-  );
+export function Badge({ children, tone = "slate" }: { children: ReactNode; tone?: keyof typeof TONES }) {
+  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${TONES[tone]}`}>{children}</span>;
 }
 
-export function Callout({ tone = "caution", title, children, action }: { tone?: "caution" | "negative" | "info"; title?: ReactNode; children?: ReactNode; action?: ReactNode }) {
-  const bg = tone === "negative" ? "bg-bad-soft" : tone === "info" ? "bg-accent-soft" : "bg-warn-soft";
-  const fg = tone === "negative" ? "text-bad" : tone === "info" ? "text-accent" : "text-warn";
+const STATUS_TONE: Record<string, keyof typeof TONES> = {
+  discovered: "blue", enriching: "blue", scored: "indigo", qualified: "green", drafted: "green", rejected: "red", error: "amber",
+  generated: "indigo", draft_created: "green", approved: "green", sent: "slate", cancelled: "slate",
+  completed: "green", partial: "amber", failed: "red", skipped: "slate",
+  publicly_confirmed: "green", provider_verified: "green", domain_valid_only: "amber", pattern_guessed: "amber", unverified: "slate", not_found: "slate", in_progress: "blue", running: "blue", pending: "slate", duplicate: "slate", processed: "green",
+};
+
+export function StatusBadge({ status }: { status: string | null | undefined }) {
+  if (!status) return <span className="text-slate-400">—</span>;
+  return <Badge tone={STATUS_TONE[status] ?? "slate"}>{status.replace(/_/g, " ")}</Badge>;
+}
+
+export function ScorePill({ score }: { score: number | null | undefined }) {
+  if (score == null) return <span className="text-slate-400">—</span>;
+  const tone = score >= 80 ? "green" : score >= 70 ? "indigo" : "red";
+  return <Badge tone={tone}>{score}</Badge>;
+}
+
+export function Table({ head, children, empty }: { head: string[]; children: ReactNode; empty?: string }) {
+  const rows = Array.isArray(children) ? children.length : children ? 1 : 0;
   return (
-    <div role={tone === "negative" ? "alert" : "status"} className={cx("flex items-start gap-3 rounded-md px-4 py-3", bg)}>
-      <AlertIcon className={cx("mt-0.5 shrink-0", fg)} />
-      <div className="min-w-0 flex-1 text-meta text-ink">
-        {title && <p className="font-medium">{title}</p>}
-        {children && <div className={title ? "mt-0.5 text-ink-2" : undefined}>{children}</div>}
-      </div>
-      {action && <div className="shrink-0">{action}</div>}
+    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table className="min-w-full divide-y divide-slate-100 text-sm">
+        <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+          <tr>{head.map((h) => <th key={h} className="whitespace-nowrap px-4 py-3">{h}</th>)}</tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 align-top">{children}</tbody>
+      </table>
+      {rows === 0 && <p className="px-4 py-8 text-center text-sm text-slate-400">{empty ?? "Nothing here yet."}</p>}
     </div>
   );
 }
 
-/* ─── Empty / loading ──────────────────────────────────────────────────────────────────────── */
-export function EmptyState({ title, children, action, className = "" }: { title: string; children?: ReactNode; action?: ReactNode; className?: string }) {
-  return (
-    <div className={cx("rounded-lg border border-dashed border-line-strong px-6 py-12 text-center", className)}>
-      <p className="text-heading text-ink">{title}</p>
-      {children && <p className="mx-auto mt-1.5 max-w-md text-body text-ink-2">{children}</p>}
-      {action && <div className="mt-5 flex justify-center">{action}</div>}
-    </div>
-  );
-}
+export const Td = ({ children, className = "" }: { children?: ReactNode; className?: string }) => <td className={`px-4 py-3 ${className}`}>{children}</td>;
 
-export const Skeleton = ({ className = "" }: { className?: string }) => <div className={cx("skeleton", className)} aria-hidden="true" />;
+export function StartupLink({ id, name }: { id: string; name: string }) {
+  return <Link href={`/startups/${id}`} className="font-medium text-indigo-700 hover:underline">{name}</Link>;
+}
 
 export function SetupNotice({ message }: { message: string }) {
   return (
-    <Callout tone="caution" title="Setup required">
-      {message}
-    </Callout>
+    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+      <div className="font-semibold">Setup required</div>
+      <p className="mt-1">{message}</p>
+    </div>
   );
 }
-
-export const Kbd = ({ children }: { children: ReactNode }) => (
-  <kbd className="rounded border border-line-strong bg-sunken px-1.5 py-px font-sans text-label text-ink-3">{children}</kbd>
-);
-
-/** A raw machine code, shown only in technical disclosures. */
-export const Code = ({ children }: { children: ReactNode }) => <code className="rounded bg-sunken px-1.5 py-0.5 font-mono text-label text-ink-2">{children}</code>;
