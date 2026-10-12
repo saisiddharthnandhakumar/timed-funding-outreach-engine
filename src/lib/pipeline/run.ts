@@ -21,6 +21,7 @@ import { canonicalizeUrl, errorMessage, mapLimit } from "@/lib/util/text";
 import type { RejectionReason, SourceRow } from "@/types/domain";
 import { evaluateHardFilters, passesGeography, type HardFilterConfig } from "./filters";
 import { PipelineLogger } from "./logger";
+import { ProgressTracker } from "./progress";
 import { looksLikeFundingNews } from "./prefilter";
 
 export interface PipelineDeps {
@@ -142,8 +143,12 @@ async function executePipeline(deps: PipelineDeps, opts: RunOptions, runId: stri
     await log.event(entity?.type ?? "pipeline", entity?.id ?? null, "error", `${scope}: ${message}`);
   };
 
+  const progress = new ProgressTracker(async (snapshot) => {
+    const r = await db().from("pipeline_runs").update({ progress_json: snapshot }).eq("id", run.id);
+    if (r.error) throw new Error(r.error.message);
+  });
   const ctx: Ctx = {
-    deps, log, now, summary, deadline,
+    deps, log, now, summary, deadline, progress,
     draftProvider: deps.draftProvider ?? selectDraftProvider(),
     dedupe: new SupabaseDedupeRepository(),
     outreachLookup: new SupabaseOutreachLookup(),
@@ -153,23 +158,30 @@ async function executePipeline(deps: PipelineDeps, opts: RunOptions, runId: stri
   try {
     await log.event("pipeline", run.id, "run_started", `Pipeline run started (${opts.trigger})`);
 
+    progress.setActivity("Starting run");
+
     // Stage 0 — resume rounds that failed transiently in a previous run.
     if (!opts.sourceKeys) await resumeRounds(ctx);
 
     // Stage 1 — ingestion
     if (!opts.skipIngest) await ingestSources(ctx, opts);
+    else progress.finish("sources", "skipped for this run");
 
     // Stage 2+ — per-article funnel
     await processPending(ctx, opts.maxArticles ?? env().PIPELINE_MAX_ARTICLES_PER_RUN, opts.sourceKeys);
 
     // Stage 3 — contact discovery backfill for qualified startups that have none yet (earlier runs / time-budget skips).
     if (!opts.skipIngest && !opts.sourceKeys) await backfillContacts(ctx);
+    progress.finish("contacts");
+    progress.finish("drafts");
   } catch (err) {
     await recordError("pipeline", err);
     summary.status = "failed";
   }
 
   if (summary.status !== "failed") summary.status = summary.errors.length ? "partial" : "completed";
+  progress.finishAll(summary.status === "failed" ? "failed" : "completed");
+  await progress.flush();
   await db()
     .from("pipeline_runs")
     .update({
@@ -198,6 +210,7 @@ interface Ctx {
   draftProvider: DraftProvider;
   dedupe: SupabaseDedupeRepository;
   outreachLookup: SupabaseOutreachLookup;
+  progress: ProgressTracker;
   recordError: (scope: string, err: unknown, entity?: { type: string; id: string | null }) => Promise<void>;
 }
 
@@ -207,13 +220,18 @@ async function ingestSources(ctx: Ctx, opts: RunOptions) {
   const sources = unwrap(await db().from("sources").select("*").eq("enabled", true), "load sources") as SourceRow[];
   const adapterFor = ctx.deps.createAdapter ?? defaultCreateAdapter;
 
-  await mapLimit(sources.filter((s) => !opts.sourceKeys || opts.sourceKeys.includes(s.key)), 4, async (source) => {
+  const targets = sources.filter((s) => !opts.sourceKeys || opts.sourceKeys.includes(s.key));
+  ctx.progress.start("sources", targets.length);
+  ctx.progress.setActivity(`Polling ${targets.length} funding source(s)`);
+  await mapLimit(targets, 4, async (source) => {
     const due = !source.last_polled_at || ctx.now().getTime() - new Date(source.last_polled_at).getTime() >= source.poll_interval_minutes * 60_000 * 0.9;
     if (!opts.force && !due) {
       await ctx.log.event("source", source.id, "source_skipped", `${source.key} polled recently; skipped`);
+      ctx.progress.tick("sources");
       return;
     }
     ctx.summary.sourcesPolled++;
+    ctx.progress.setActivity(`Polling ${source.key}`);
     try {
       const items = await adapterFor(source).fetchLatest();
       const rows = items.flatMap((a) => {
@@ -245,14 +263,17 @@ async function ingestSources(ctx: Ctx, opts: RunOptions) {
         .update({ last_polled_at: ctx.now().toISOString(), last_success_at: ctx.now().toISOString(), last_items_found: rows.length, last_error: null })
         .eq("id", source.id);
       await ctx.log.event("source", source.id, "source_polled", `${source.key}: ${rows.length} items, ${inserted.length} new`);
+      ctx.progress.tick("sources");
     } catch (err) {
       await db()
         .from("sources")
         .update({ last_polled_at: ctx.now().toISOString(), last_error: errorMessage(err), last_error_at: ctx.now().toISOString() })
         .eq("id", source.id);
       await ctx.recordError(`source:${source.key}`, err, { type: "source", id: source.id });
+      ctx.progress.tick("sources");
     }
   });
+  ctx.progress.finish("sources", `${ctx.summary.articlesFound} articles seen, ${ctx.summary.articlesNew} new, ${ctx.summary.errors.filter((e) => e.scope.startsWith("source:")).length} source error(s)`);
 }
 
 /* ───────────────────────────── Stage 2: per-article funnel ───────────────────────────── */
@@ -292,6 +313,8 @@ async function processPending(ctx: Ctx, maxArticles: number, sourceKeys?: string
 
   // Cheap gates first (no AI): staleness, then keyword relevance.
   const survivors: ArticleRow[] = [];
+  ctx.progress.start("prefilter", pending.length);
+  ctx.progress.setActivity(`Screening ${pending.length} pending article(s) by age and keywords`);
   for (const a of pending) {
     const announcedAt = new Date(a.source_published_at ?? a.first_seen_at);
     const ageHours = (ctx.now().getTime() - announcedAt.getTime()) / 3_600_000;
@@ -304,19 +327,30 @@ async function processPending(ctx: Ctx, maxArticles: number, sourceKeys?: string
     } else {
       survivors.push(a);
     }
+    ctx.progress.tick("prefilter");
   }
+  const batch = survivors.slice(0, maxArticles);
+  ctx.progress.finish("prefilter", `${pending.length - survivors.length} dropped, ${survivors.length} continue${survivors.length > batch.length ? ` (${survivors.length - batch.length} deferred by the per-run cap)` : ""}`);
+  ctx.progress.start("classify", batch.length);
 
-  await mapLimit(survivors.slice(0, maxArticles), env().PIPELINE_CONCURRENCY, async (a) => {
+  await mapLimit(batch, env().PIPELINE_CONCURRENCY, async (a) => {
     if (Date.now() > ctx.deadline) return; // stays pending for the next run
+    const flags = { classified: false };
     try {
-      await processArticle(ctx, a, cfg);
+      await processArticle(ctx, a, cfg, flags);
       ctx.summary.articlesProcessed++;
     } catch (err) {
+      if (!flags.classified) ctx.progress.tick("classify");
       await bumpAttempts(a.id, errorMessage(err));
       await ctx.recordError(`article:${a.headline.slice(0, 60)}`, err, { type: "article", id: a.id });
       traceRow(ctx, a, { classification: "error", eligibility: `error: ${errorMessage(err).slice(0, 80)}` });
     }
   });
+  const deferred = batch.length - ctx.summary.articlesProcessed;
+  ctx.progress.finish("classify", deferred > 0 ? `${deferred} left pending for the next run (time budget or retry)` : undefined);
+  ctx.progress.finish("filters");
+  ctx.progress.finish("research");
+  ctx.progress.finish("scoring");
 }
 
 /** Transient failures leave the article pending (retried next run) up to 3 attempts, then it is marked error. */
@@ -347,7 +381,7 @@ function traceRow(ctx: Ctx, a: ArticleRow, v: Partial<TraceRow> & Pick<TraceRow,
   void sourceName(a.source_id).then((n) => (row.source = n));
 }
 
-async function processArticle(ctx: Ctx, a: ArticleRow, cfg: HardFilterConfig) {
+async function processArticle(ctx: Ctx, a: ArticleRow, cfg: HardFilterConfig, flags: { classified: boolean }) {
   // Full text (cheap HTTP) — fall back to snippet if the page can't be fetched.
   let text = a.raw_text;
   if (!text || text.length < 600) {
@@ -361,9 +395,13 @@ async function processArticle(ctx: Ctx, a: ArticleRow, cfg: HardFilterConfig) {
     }
   }
 
+  ctx.progress.setActivity(`Classifying: ${a.headline.slice(0, 80)}`);
   const c: Classification = await classifyArticle(ctx.deps.ai, {
     headline: a.headline, snippet: a.snippet, articleText: text, source: await sourceName(a.source_id), publishedAt: a.source_published_at,
   });
+  flags.classified = true;
+  ctx.progress.tick("classify");
+  ctx.progress.add("filters");
   await db().from("funding_articles").update({ classification_json: c, classification_confidence: c.confidence }).eq("id", a.id);
   const brief = `${c.is_funding_announcement ? (c.is_roundup ? "roundup" : "funding") : "not funding"} (${c.confidence.toFixed(2)})`;
 
@@ -371,6 +409,7 @@ async function processArticle(ctx: Ctx, a: ArticleRow, cfg: HardFilterConfig) {
     const note = c.is_roundup ? "multi-company roundup (not handled in V1)" : c.confidence < MIN_CONFIDENCE ? "low confidence" : undefined;
     await rejectArticle(ctx, a, "not_funding_announcement", note ? { last_error: note } : undefined);
     traceRow(ctx, a, { classification: brief, company: c.company_name, stage: c.funding_stage, eligibility: `rejected: not_funding_announcement${note ? ` (${note})` : ""}` });
+    ctx.progress.tick("filters");
     return;
   }
 
@@ -382,6 +421,7 @@ async function processArticle(ctx: Ctx, a: ArticleRow, cfg: HardFilterConfig) {
   if (!pre.passed) {
     await rejectArticle(ctx, a, pre.reason!);
     traceRow(ctx, a, { classification: brief, company: c.company_name, stage: c.funding_stage, eligibility: `rejected: ${pre.reason}` });
+    ctx.progress.tick("filters");
     return;
   }
 
@@ -398,6 +438,7 @@ async function processArticle(ctx: Ctx, a: ArticleRow, cfg: HardFilterConfig) {
     await db().from("funding_articles").update({ processing_status: "duplicate", processed_at: ctx.now().toISOString() }).eq("id", a.id);
     await ctx.log.event("round", resolved.round.id, "duplicate_report_attached", `${a.headline} attached to existing round of ${resolved.startup.name}`, { article_id: a.id, match: resolved.startupMatch });
     traceRow(ctx, a, { classification: brief, company: resolved.startup.name, stage: c.funding_stage, eligibility: `duplicate of existing round (${resolved.startupMatch})` });
+    ctx.progress.tick("filters");
     return;
   }
 
@@ -405,6 +446,7 @@ async function processArticle(ctx: Ctx, a: ArticleRow, cfg: HardFilterConfig) {
   await db().from("funding_articles").update({ processing_status: "processed", processed_at: ctx.now().toISOString() }).eq("id", a.id);
   await ctx.log.event("round", resolved.round.id, "funding_event_created", `${resolved.startup.name} ${c.funding_stage}`, { startup_id: resolved.startup.id, article_id: a.id });
 
+  ctx.progress.tick("filters");
   const outcome = await evaluateRound(ctx, resolved.round.id);
   traceRow(ctx, a, { classification: brief, company: resolved.startup.name, stage: c.funding_stage, eligibility: outcome.eligibility, fitScore: outcome.score, draft: outcome.draft });
 }
@@ -477,13 +519,16 @@ async function evaluateRound(ctx: Ctx, roundId: string): Promise<RoundEval> {
       }
       docs.push({ url: fa.source_url, text: fa.raw_text ?? `${fa.headline}\n${fa.snippet ?? ""}`, links });
     }
-    const research = await researchStartup(
-      ctx.deps.ai,
-      { companyName: startup.name, hqCountry: startup.hq_country, articles: docs, website: startup.website },
-      ctx.log,
-      startup.id,
-    );
-    await persistEnrichment(startup.id, research, ctx.log);
+    const research = await ctx.progress.track("research", `Researching ${startup.name}`, async () => {
+      const r = await researchStartup(
+        ctx.deps.ai,
+        { companyName: startup.name, hqCountry: startup.hq_country, articles: docs, website: startup.website },
+        ctx.log,
+        startup.id,
+      );
+      await persistEnrichment(startup.id, r, ctx.log);
+      return r;
+    });
     await ctx.log.event("startup", startup.id, "startup_enriched", `${startup.name} enriched`, { sources: research.sources.length, warnings: research.warnings });
 
     // Geography is re-verified against research (it may have been unknown in the article).
@@ -498,10 +543,13 @@ async function evaluateRound(ctx: Ctx, roundId: string): Promise<RoundEval> {
     const investorRows = (await db().from("funding_round_investors").select("investors(name)").eq("funding_round_id", roundId)).data as unknown as { investors: { name: string } }[] | null;
     const investors = (investorRows ?? []).map((r) => r.investors.name);
     const announcedAt = new Date(round.earliest_source_published_at ?? round.created_at);
-    const { assessment, warnings } = await assessRound(ctx.deps.ai, {
-      startupId: startup.id, roundId, profile: research.profile as StartupProfile, stage: round.stage,
-      amount: round.amount == null ? null : Number(round.amount), currency: round.currency, investors, announcedAt, now: ctx.now(),
-    });
+    const { assessment, warnings } = await ctx.progress.track("scoring", `Scoring ${startup.name} against the thesis`, () =>
+      assessRound(ctx.deps.ai, {
+        startupId: startup.id, roundId, profile: research.profile as StartupProfile, stage: round.stage,
+        amount: round.amount == null ? null : Number(round.amount), currency: round.currency, investors, announcedAt, now: ctx.now(),
+      }),
+    );
+    ctx.progress.setDetail("scoring", `last: ${startup.name} ${assessment.total_score}/100`);
     await setRound(roundId, { status: "scored" });
     await ctx.log.event("round", roundId, "fit_scored", `${startup.name}: ${assessment.total_score}/100 (${assessment.qualified ? "qualified" : "below threshold"})`, { assessment_id: assessment.id, warnings, thesis_version: assessment.thesis_version });
 
@@ -513,15 +561,17 @@ async function evaluateRound(ctx: Ctx, roundId: string): Promise<RoundEval> {
     await setRound(roundId, { status: "qualified" });
 
     // Founder-first contact discovery (free sources only) so the draft can be addressed. Never blocks the draft.
-    await enrichContactsSafely(ctx, startup.id, startup.name);
+    await ctx.progress.track("contacts", `Finding contact details for ${startup.name}`, () => enrichContactsSafely(ctx, startup.id, startup.name));
 
     // Personalised outreach (Gemini Task 4) → draft provider. Never sends.
     const { thesis } = await loadActiveScoringConfig();
-    const out = await createOutreachDraft(ctx.deps.ai, ctx.outreachLookup, ctx.draftProvider, {
-      startupId: startup.id, roundId, assessmentId: assessment.id, profile: research.profile as StartupProfile, stage: round.stage,
-      amount: round.amount == null ? null : Number(round.amount), currency: round.currency, investors,
-      positiveSignals: assessment.positive_signals, thesisText: thesis.natural_language_thesis,
-    });
+    const out = await ctx.progress.track("drafts", `Writing outreach draft for ${startup.name}`, () =>
+      createOutreachDraft(ctx.deps.ai, ctx.outreachLookup, ctx.draftProvider, {
+        startupId: startup.id, roundId, assessmentId: assessment.id, profile: research.profile as StartupProfile, stage: round.stage,
+        amount: round.amount == null ? null : Number(round.amount), currency: round.currency, investors,
+        positiveSignals: assessment.positive_signals, thesisText: thesis.natural_language_thesis,
+      }),
+    );
     if (!out.created) {
       await ctx.log.event("round", roundId, "outreach_blocked", `${startup.name}: ${out.reason}`);
       return { eligibility: "qualified", score: assessment.total_score, draft: `blocked: ${out.reason}` };
@@ -561,9 +611,11 @@ async function backfillContacts(ctx: Ctx): Promise<void> {
   try {
     const ids = await pendingQualifiedStartups(limit);
     if (!ids.length) return;
+    ctx.progress.add("contacts", ids.length);
+    ctx.progress.setActivity(`Contact discovery backfill for ${ids.length} earlier qualified startup(s)`);
     const outcomes = ctx.deps.enrichContacts
-      ? await Promise.all(ids.map((id) => ctx.deps.enrichContacts!(id)))
-      : await enrichBatch(ctx.deps.ai, ids, { deadline: ctx.deadline - CONTACT_MIN_SECONDS_LEFT * 1000, log: ctx.log });
+      ? await Promise.all(ids.map(async (id) => { try { return await ctx.deps.enrichContacts!(id); } finally { ctx.progress.tick("contacts"); } }))
+      : await enrichBatch(ctx.deps.ai, ids, { deadline: ctx.deadline - CONTACT_MIN_SECONDS_LEFT * 1000, log: ctx.log, onDone: () => ctx.progress.tick("contacts") });
     await ctx.log.event("pipeline", null, "contacts_backfill", `Contact discovery backfill: ${ids.length} startup(s)`, { statuses: outcomes.map((o) => o?.status) });
   } catch (err) {
     await ctx.recordError("contacts:backfill", err);

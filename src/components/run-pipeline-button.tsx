@@ -13,6 +13,7 @@ export function RunPipelineButton() {
       const res = await fetch("/api/pipeline/run", { method: "POST" });
       if (!res.ok) throw new Error(String(res.status));
       setState("started");
+      window.dispatchEvent(new Event("pipeline-run-started"));
       // The run continues server-side; refresh a few times so progress shows up.
       for (const ms of [8_000, 25_000, 60_000]) setTimeout(() => router.refresh(), ms);
     } catch {
@@ -22,7 +23,7 @@ export function RunPipelineButton() {
 
   return (
     <div className="flex items-center gap-3">
-      {state === "started" && <span className="text-xs text-slate-500">Run started — results appear below as it progresses.</span>}
+      {state === "started" && <span className="text-xs text-slate-500">Run started — watch the progress panel below.</span>}
       {state === "error" && <span className="text-xs text-rose-600">Could not start the run.</span>}
       <button
         onClick={run}

@@ -149,3 +149,7 @@ flowchart LR
 | `storage.ts`, `budget.ts` | Supabase persistence (idempotent upserts), monthly free-quota budget |
 
 Tables: `startup_contacts` (one row per address / contact form; one preferred per startup), `enrichment_budget`; columns `startups.contact_status/contact_checked_at/contact_error`.
+
+## Run progress (`pipeline/progress.ts`)
+
+`ProgressTracker` keeps a done/total counter per stage (`sources → prefilter → classify → filters → research → scoring → contacts → drafts`) plus a one-line activity message, and writes it (throttled) to `pipeline_runs.progress_json`. `run.ts` feeds it as items pass through each stage (`add` / `tick` / `track`). The dashboard component `components/pipeline-progress.tsx` polls `GET /api/pipeline/progress`. If the column is missing the writer fails once and progress is switched off without affecting the run.

@@ -1,6 +1,7 @@
 import { dashboardData, configured } from "@/lib/queries";
 import { Badge, Card, PageHeader, SetupNotice, Stat, StatusBadge } from "@/components/ui";
 import { RunPipelineButton } from "@/components/run-pipeline-button";
+import { PipelineProgress, type RunView } from "@/components/pipeline-progress";
 import { formatDateTime, formatDelay, timeAgo } from "@/lib/format";
 import { EXPECTED_CADENCE_MINUTES } from "@/lib/pipeline/health";
 
@@ -13,6 +14,12 @@ export default async function Dashboard() {
   return (
     <>
       <PageHeader title="Dashboard" subtitle="Last 24 hours of live funding-news ingestion and outreach preparation." actions={<RunPipelineButton />} />
+      <div className="mb-6">
+        <Card title="Pipeline progress">
+          <PipelineProgress initial={(last as RunView | undefined) ?? null} />
+        </Card>
+      </div>
+
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Stat label="Articles found" value={d.articles} hint="first seen, 24h" />
         <Stat label="Funding events" value={d.events} hint="Indian pre-seed/seed candidates" />

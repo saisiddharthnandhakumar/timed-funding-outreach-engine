@@ -37,8 +37,8 @@ export async function enrichOne(ai: AIService, startupId: string, opts: { force?
   return enrichStartupContacts(createContactDeps(ai, opts.log), startupId, { force: opts.force });
 }
 
-export async function enrichBatch(ai: AIService, ids: string[], opts: { force?: boolean; deadline?: number; log?: PipelineLogger } = {}): Promise<ContactOutcome[]> {
-  return enrichMany(createContactDeps(ai, opts.log), ids, { concurrency: env().CONTACT_CONCURRENCY, force: opts.force, deadline: opts.deadline });
+export async function enrichBatch(ai: AIService, ids: string[], opts: { force?: boolean; deadline?: number; log?: PipelineLogger; onDone?: (o: ContactOutcome) => void } = {}): Promise<ContactOutcome[]> {
+  return enrichMany(createContactDeps(ai, opts.log), ids, { concurrency: env().CONTACT_CONCURRENCY, force: opts.force, deadline: opts.deadline, onDone: opts.onDone });
 }
 
 /** Qualified startups that have never been through contact enrichment (backfill for earlier runs / skipped by the time budget). */

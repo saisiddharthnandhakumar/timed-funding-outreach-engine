@@ -55,6 +55,12 @@ Implemented in code, **not yet committed, migrated or deployed**:
 - [ ] Apply migration to Supabase, then deploy. Until applied, contact steps log errors (runs show `partial`) and the new UI sections stay empty
 - [ ] Live end-to-end contact run on a real qualified startup (needs the migration and the Gemini key)
 
+## Live progress panel (2026-10-12) — implemented, NOT yet migrated/committed
+
+- [x] `ProgressTracker` + instrumentation of every pipeline stage, `/api/pipeline/progress`, dashboard panel with per-stage bars
+- [x] Migration `20261012000007_pipeline_progress.sql` written (**not applied**); 8 unit tests
+- [ ] Apply migration, run the pipeline once and watch the panel on a real run
+
 ## Remaining
 
 - [ ] Phase 16 — Final acceptance sign-off (checklist in PRD §39), including a secret scan and a live check of the deployed URL

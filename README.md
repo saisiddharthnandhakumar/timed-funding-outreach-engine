@@ -75,6 +75,10 @@ All documented in [`.env.example`](.env.example): `NEXT_PUBLIC_SUPABASE_URL`, `S
 - **Manual** — the dashboard button remains available whenever a run is needed immediately.
 - **Overlapping runs are impossible.** Every trigger takes an atomic database lock (`acquire_pipeline_lock`). A trigger that finds a live lock returns `{"status":"skipped","reason":"already_running"}` without polling sources or calling Gemini. The lock is released after success or failure, expires by itself if a run dies, and runs left `running` after a crash are marked `failed` (`stale_run`).
 
+## Live pipeline progress
+
+The dashboard's **Pipeline progress** panel shows an overall bar and one bar per stage (discover, age/keyword gates, Gemini classification, hard filters & dedupe, research, fit scoring, contact discovery, drafts) with done/total counts, per-stage timing and a "Now:" line naming what the backend is doing (e.g. "Researching Nimbus AI"). The run writes its progress to `pipeline_runs.progress_json` (throttled to about one write per second); the page polls `/api/pipeline/progress` every 2 seconds while a run is active and every 15 seconds otherwise. Stages after classification grow as articles reach them, because the pipeline is a per-article funnel. Requires migration `20261012000007_pipeline_progress.sql`; without it the pipeline runs normally and the panel says progress is unavailable.
+
 ## Thesis configuration
 
 Open **Thesis Settings** in the UI. Geography, stages, sectors, exclusions, business models, max age, minimum score, scoring weights (validated to total 100), recency bands, stage points and the natural-language thesis are all editable. Saving creates a **new thesis version** (atomic Postgres function) and activates it; the scorer reads the active row at scoring time, so no redeploy is needed. Each `fit_assessment` stores its `thesis_id`, `thesis_version` and a snapshot of the criteria used, so history never changes.

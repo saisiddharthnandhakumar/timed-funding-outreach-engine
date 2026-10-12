@@ -246,13 +246,18 @@ export async function enrichStartupContacts(deps: ContactDeps, startupId: string
 }
 
 /** Batch: bounded concurrency; one startup failing never fails the others. */
-export async function enrichMany(deps: ContactDeps, startupIds: string[], opts: { concurrency?: number; force?: boolean; deadline?: number } = {}): Promise<ContactOutcome[]> {
+export async function enrichMany(deps: ContactDeps, startupIds: string[], opts: { concurrency?: number; force?: boolean; deadline?: number; onDone?: (o: ContactOutcome) => void } = {}): Promise<ContactOutcome[]> {
   return mapLimit(startupIds, opts.concurrency ?? 3, async (id) => {
-    if (opts.deadline && Date.now() > opts.deadline) return empty(id, "skipped", { skippedReason: "deadline" });
-    try {
-      return await enrichStartupContacts(deps, id, { force: opts.force });
-    } catch (err) {
-      return empty(id, "failed", { warnings: [errorMessage(err)] });
+    let outcome: ContactOutcome;
+    if (opts.deadline && Date.now() > opts.deadline) outcome = empty(id, "skipped", { skippedReason: "deadline" });
+    else {
+      try {
+        outcome = await enrichStartupContacts(deps, id, { force: opts.force });
+      } catch (err) {
+        outcome = empty(id, "failed", { warnings: [errorMessage(err)] });
+      }
     }
+    opts.onDone?.(outcome);
+    return outcome;
   });
 }
