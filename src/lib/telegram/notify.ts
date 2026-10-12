@@ -132,7 +132,12 @@ export function telegramConfig(): TelegramConfig | null {
 
 export function appBaseUrl(): string | null {
   const raw = env().APP_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null);
-  return raw ? raw.replace(/\/+$/, "") : null;
+  if (!raw) return null;
+  try {
+    return new URL(raw).origin; // tolerate a pasted path such as ".../today"
+  } catch {
+    return null;
+  }
 }
 
 export function telegramDeps(): NotifyDeps {
