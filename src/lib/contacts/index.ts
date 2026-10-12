@@ -8,6 +8,8 @@ import { defaultFetcher } from "./http";
 import { enrichMany, enrichStartupContacts, type ContactDeps, type ContactOutcome } from "./pipeline";
 import { RobotsGuard } from "./robots";
 import { GroundedWebSearch } from "./search";
+import { ApiWebSearch, ChainedWebSearch } from "./search-api";
+import { getSearch } from "@/lib/websearch";
 import { SupabaseContactStore } from "./storage";
 import { HunterFinder } from "./hunter";
 import { HunterVerifier, MxChecker } from "./verify";
@@ -27,7 +29,12 @@ export function createContactDeps(ai: AIService, log?: PipelineLogger): ContactD
     robots,
     mx: new MxChecker(),
     github: new GithubProvider(realGithubFetch(e.GITHUB_TOKEN)),
-    search: new GroundedWebSearch(ai, defaultFetcher, robots, budget, { monthlyLimit: e.CONTACT_SEARCH_MONTHLY_BUDGET, maxPages: 4 }),
+    search: (() => {
+      const grounded = new GroundedWebSearch(ai, defaultFetcher, robots, budget, { monthlyLimit: e.CONTACT_SEARCH_MONTHLY_BUDGET, maxPages: 4 });
+      const api = getSearch();
+      // Serper/Tavily find the pages first; Gemini's grounded search is only the fallback when they find none.
+      return api ? new ChainedWebSearch([new ApiWebSearch(api, defaultFetcher, robots, { maxPages: 4 }), grounded]) : grounded;
+    })(),
     verifier: e.HUNTER_API_KEY ? new HunterVerifier(e.HUNTER_API_KEY) : null,
     finder: e.HUNTER_API_KEY ? new HunterFinder(e.HUNTER_API_KEY) : null,
     resolveWebsite: resolveWebsiteUrl,

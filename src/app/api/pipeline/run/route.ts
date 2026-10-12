@@ -3,6 +3,7 @@ import { getAI } from "@/lib/ai";
 import { runPipeline } from "@/lib/pipeline/run";
 import { InvestorEnricher } from "@/lib/investors/enrich";
 import { resolveWebsiteUrl } from "@/lib/research/website";
+import { researchSearchDocs } from "@/lib/websearch/research";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -12,7 +13,7 @@ export async function POST() {
   const deadline = Date.now() + (maxDuration - 45) * 1000;
   after(async () => {
     try {
-      const summary = await runPipeline({ ai: getAI(), investorLookup: new InvestorEnricher(), resolveWebsite: resolveWebsiteUrl }, { trigger: "manual", force: true, deadline });
+      const summary = await runPipeline({ ai: getAI(), investorLookup: new InvestorEnricher(), resolveWebsite: resolveWebsiteUrl, researchSearch: researchSearchDocs }, { trigger: "manual", force: true, deadline });
       if (summary.status === "skipped") console.warn("manual pipeline run skipped: another run is in progress");
     } catch (err) {
       console.error("manual pipeline run failed", err);

@@ -5,6 +5,7 @@ import { getAI } from "@/lib/ai";
 import { runPipeline } from "@/lib/pipeline/run";
 import { InvestorEnricher } from "@/lib/investors/enrich";
 import { resolveWebsiteUrl } from "@/lib/research/website";
+import { researchSearchDocs } from "@/lib/websearch/research";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
   const given = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
   if (!secret || !timingSafeEqual(given, secret)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const summary = await runPipeline({ ai: getAI(), investorLookup: new InvestorEnricher(), resolveWebsite: resolveWebsiteUrl }, { trigger: "cron", deadline: Date.now() + (maxDuration - 45) * 1000 });
+  const summary = await runPipeline({ ai: getAI(), investorLookup: new InvestorEnricher(), resolveWebsite: resolveWebsiteUrl, researchSearch: researchSearchDocs }, { trigger: "cron", deadline: Date.now() + (maxDuration - 45) * 1000 });
   if (summary.status === "skipped") return NextResponse.json({ status: "skipped", reason: summary.skipped }, { status: 200 });
   const { trace: _trace, ...rest } = summary;
   void _trace;

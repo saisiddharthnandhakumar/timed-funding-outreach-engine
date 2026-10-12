@@ -28,6 +28,11 @@ const schema = z.object({
   RESEND_REPLY_TO: optional,
   GITHUB_TOKEN: optional,
   HUNTER_API_KEY: optional,
+  /** Optional web search: Serper (find pages) and Tavily (research context). Each is capped per month. */
+  SERPER_API_KEY: optional,
+  TAVILY_API_KEY: optional,
+  SERPER_MONTHLY_BUDGET: z.preprocess(blank, z.coerce.number().int().min(0).max(1000000).default(1500)),
+  TAVILY_MONTHLY_BUDGET: z.preprocess(blank, z.coerce.number().int().min(0).max(1000000).default(600)),
   TELEGRAM_BOT_TOKEN: optional,
   TELEGRAM_CHAT_ID: optional,
   /** Public URL of the deployed app; used for links inside Telegram messages. */

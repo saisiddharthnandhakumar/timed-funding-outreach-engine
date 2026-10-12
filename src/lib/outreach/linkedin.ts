@@ -5,7 +5,8 @@ import { generateLinkedInDm } from "@/lib/gemini/tasks";
 import type { StartupProfile } from "@/lib/gemini/schemas";
 import type { PipelineLogger } from "@/lib/pipeline/logger";
 import { SupabaseBudget } from "@/lib/contacts/budget";
-import { errorMessage } from "@/lib/util/text";
+import { getSearch, type SearchHit, type SearchService } from "@/lib/websearch";
+import { errorMessage, normalizeCompanyName } from "@/lib/util/text";
 
 export interface LinkedInTarget {
   url: string;
@@ -36,6 +37,47 @@ export function parseTargets(text: string, known: { name: string }[]): LinkedInT
   return out;
 }
 
+const mentionsCompany = (text: string, company: string) => normalizeCompanyName(text.replace(/[^a-z0-9\s]/gi, " ")).includes(normalizeCompanyName(company)) || text.toLowerCase().includes(company.toLowerCase().split(/\s+/)[0]);
+
+/**
+ * Pick a public LinkedIn profile out of web-search hits. With a known person the URL slug must fit their name; without one,
+ * the person is read from a "Name - Role - Company | LinkedIn" title. Either way the hit has to mention the company.
+ */
+export function pickProfileFromHits(hits: SearchHit[], q: { company: string; name?: string; role?: string | null }): LinkedInTarget | null {
+  const fullNameInSlug = (url: string, name: string) => {
+    const t = name.toLowerCase().split(/\s+/).filter((x) => x.length >= 2);
+    return t.length >= 2 && t.every((x) => slugOf(url).includes(x.replace(/[^a-z]/g, "")));
+  };
+  // Other results in the same search that tie this person to the company (a news story, the company's own page).
+  const corroborated = q.name ? hits.some((h) => !/linkedin\.com\/in\//i.test(h.url) && mentionsCompany(`${h.title} ${h.snippet}`, q.company) && `${h.title} ${h.snippet}`.toLowerCase().includes(q.name!.toLowerCase())) : false;
+  for (const [i, h] of hits.entries()) {
+    const m = h.url.match(PROFILE_URL); // String.match with a /g regex is stateless
+    if (!m) continue;
+    const url = clean(m[0]);
+    const mentions = mentionsCompany(`${h.title} ${h.snippet}`, q.company);
+    if (q.name) {
+      if (!slugMatchesName(url, q.name)) continue;
+      // A profile whose snippet doesn't name the company is accepted only when the search corroborates the person there.
+      if (!mentions && !(corroborated && i < 3 && fullNameInSlug(url, q.name))) continue;
+      return { url, name: q.name, role: q.role ?? null };
+    }
+    if (!mentions) continue;
+    const parts = h.title.replace(/\|?\s*LinkedIn.*$/i, "").split(/\s[-–—|]\s/).map((p) => p.trim()).filter(Boolean);
+    const name = parts[0];
+    if (name && name.split(/\s+/).length <= 4 && slugMatchesName(url, name)) return { url, name, role: parts[1] && !mentionsCompany(parts[1], q.company) ? parts[1] : null };
+  }
+  return null;
+}
+
+async function findViaSearch(search: Pick<SearchService, "find">, input: { companyName: string; founders: { name: string; role: string | null }[] }): Promise<LinkedInTarget | null> {
+  for (const f of input.founders.slice(0, 3)) {
+    const hit = pickProfileFromHits(await search.find(`${f.name} ${input.companyName} LinkedIn`, { num: 6 }), { company: input.companyName, name: f.name, role: f.role });
+    if (hit) return hit;
+  }
+  if (input.founders.length) return null;
+  return pickProfileFromHits(await search.find(`${input.companyName} founder CEO LinkedIn`, { num: 8 }), { company: input.companyName });
+}
+
 const SENIORITY = /founder|ceo|chief executive|co-?founder|cto|coo|managing director|head|director|vp|president/i;
 
 /**
@@ -47,6 +89,12 @@ export async function findLinkedInTarget(
   ai: AIService,
   input: { companyName: string; domain: string | null; founders: { name: string; role: string | null; linkedin_url: string | null }[] },
 ): Promise<LinkedInTarget | null> {
+  // Web search (Serper) first: it doesn't depend on Gemini's quota. Gemini grounding stays as the fallback.
+  const search = getSearch();
+  if (search) {
+    const found = await findViaSearch(search, input).catch(() => null);
+    if (found) return found;
+  }
   if (!(await new SupabaseBudget().consume("gemini_search", env().CONTACT_SEARCH_MONTHLY_BUDGET))) return null;
   const names = input.founders.map((f) => `${f.name}${f.role ? ` (${f.role})` : ""}`).join(", ");
   const res = await ai.generateGrounded({

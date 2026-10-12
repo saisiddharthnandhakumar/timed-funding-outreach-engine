@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1480 1000" font-family="-apple-system,Helvetica,Arial,sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#9aa3b8"/></marker></defs>
+<rect width="1480" height="1000" rx="18" fill="#141a2b"/>
+<rect x="10" y="10" width="1460" height="50" fill="#0d1322"/>
+<text x="95.0" y="40.0" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">Actor</text>
+<text x="287.5" y="40.0" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">Trigger</text>
+<text x="502.5" y="40.0" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">Input</text>
+<line x1="395" y1="60" x2="395" y2="990" stroke="#2a3350"/>
+<text x="717.5" y="40.0" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">Context</text>
+<line x1="610" y1="60" x2="610" y2="990" stroke="#2a3350"/>
+<text x="932.5" y="40.0" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">Processing</text>
+<line x1="825" y1="60" x2="825" y2="990" stroke="#2a3350"/>
+<text x="1147.5" y="40.0" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">AI</text>
+<line x1="1040" y1="60" x2="1040" y2="990" stroke="#2a3350"/>
+<text x="1362.5" y="40.0" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">Output</text>
+<line x1="1255" y1="60" x2="1255" y2="990" stroke="#2a3350"/>
+<rect x="10" y="60" width="1460" height="92" fill="#171e32"/>
+<rect x="10" y="60" width="170" height="92" fill="#0d1322"/>
+<text x="28" y="104.0" fill="#fff" font-size="15" font-weight="700">Vercel</text>
+<text x="28" y="122.0" fill="#9aa3b8" font-size="12">Hosting + cron</text>
+<rect x="10" y="152" width="1460" height="92" fill="#141a2b"/>
+<rect x="10" y="152" width="170" height="92" fill="#0d1322"/>
+<text x="28" y="196.0" fill="#fff" font-size="15" font-weight="700">News &amp; VC sites</text>
+<text x="28" y="212.0" fill="#9aa3b8" font-size="11">ET · Inc42 · YourStory</text>
+<text x="28" y="226.0" fill="#9aa3b8" font-size="11">Entrackr · Mint · VC sites</text>
+<rect x="10" y="244" width="1460" height="92" fill="#171e32"/>
+<rect x="10" y="244" width="170" height="92" fill="#0d1322"/>
+<text x="28" y="288.0" fill="#fff" font-size="15" font-weight="700">Supabase</text>
+<text x="28" y="306.0" fill="#9aa3b8" font-size="12">Postgres database</text>
+<rect x="10" y="336" width="1460" height="92" fill="#141a2b"/>
+<rect x="10" y="336" width="170" height="92" fill="#0d1322"/>
+<text x="28" y="380.0" fill="#fff" font-size="15" font-weight="700">GitHub API</text>
+<text x="28" y="398.0" fill="#9aa3b8" font-size="12">Public profiles</text>
+<rect x="10" y="428" width="1460" height="92" fill="#171e32"/>
+<rect x="10" y="428" width="170" height="92" fill="#0d1322"/>
+<text x="28" y="472.0" fill="#fff" font-size="15" font-weight="700">Hunter</text>
+<text x="28" y="490.0" fill="#9aa3b8" font-size="12">Email finder</text>
+<rect x="10" y="520" width="1460" height="92" fill="#141a2b"/>
+<rect x="10" y="520" width="170" height="92" fill="#0d1322"/>
+<text x="28" y="564.0" fill="#fff" font-size="15" font-weight="700">Gemini Flash</text>
+<text x="28" y="582.0" fill="#9aa3b8" font-size="12">Google AI</text>
+<rect x="10" y="612" width="1460" height="92" fill="#171e32"/>
+<rect x="10" y="612" width="170" height="92" fill="#0d1322"/>
+<text x="28" y="656.0" fill="#fff" font-size="15" font-weight="700">OpenRouter</text>
+<text x="28" y="674.0" fill="#9aa3b8" font-size="12">Backup AI</text>
+<rect x="10" y="704" width="1460" height="92" fill="#141a2b"/>
+<rect x="10" y="704" width="170" height="92" fill="#0d1322"/>
+<text x="28" y="748.0" fill="#fff" font-size="15" font-weight="700">Gmail API</text>
+<text x="28" y="766.0" fill="#9aa3b8" font-size="12">Google</text>
+<rect x="10" y="796" width="1460" height="92" fill="#171e32"/>
+<rect x="10" y="796" width="170" height="92" fill="#0d1322"/>
+<text x="28" y="840.0" fill="#fff" font-size="15" font-weight="700">Resend</text>
+<text x="28" y="858.0" fill="#9aa3b8" font-size="12">Email</text>
+<rect x="10" y="888" width="1460" height="92" fill="#141a2b"/>
+<rect x="10" y="888" width="170" height="92" fill="#0d1322"/>
+<text x="28" y="932.0" fill="#fff" font-size="15" font-weight="700">Telegram</text>
+<text x="28" y="950.0" fill="#9aa3b8" font-size="12">Bot</text>
+<path d="M372.5,106.0 H395.0 V198.0 H417.5" fill="none" stroke="#9aa3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<path d="M587.5,198.0 H825.0 V290.0 H847.5" fill="none" stroke="#9aa3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<path d="M1017.5,290.0 H1040.0 V566.0 H1062.5" fill="none" stroke="#9aa3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<path d="M802.5,382.0 H1040.0 V566.0 H1062.5" fill="none" stroke="#9aa3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<path d="M802.5,474.0 H1040.0 V566.0 H1062.5" fill="none" stroke="#9aa3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<path d="M1232.5,566.0 H1255.0 V106.0 H1277.5" fill="none" stroke="#9aa3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<path d="M1232.5,566.0 H1255.0 V750.0 H1277.5" fill="none" stroke="#9aa3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<path d="M1232.5,566.0 H1255.0 V842.0 H1277.5" fill="none" stroke="#9aa3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<path d="M1232.5,566.0 H1255.0 V934.0 H1277.5" fill="none" stroke="#9aa3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<path d="M1147.5,599.0 V625.0" fill="none" stroke="#f06eb0" stroke-width="1.6" stroke-dasharray="3 4" marker-end="url(#a)"/>
+<rect x="202.5" y="73.0" width="170" height="66" rx="9" fill="#1f1b3a" stroke="#8b7cf6" stroke-width="2"/>
+<text x="287.5" y="97.0" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Daily cron</text>
+<text x="287.5" y="115.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">Runs the pipeline</text>
+<text x="287.5" y="130.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">every day 03:30 UTC</text>
+<rect x="1277.5" y="73.0" width="170" height="66" rx="9" fill="#3b241a" stroke="#f0875a" stroke-width="2"/>
+<text x="1362.5" y="97.0" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Dashboard</text>
+<text x="1362.5" y="115.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">Review, approve</text>
+<text x="1362.5" y="130.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">and send drafts</text>
+<rect x="417.5" y="165.0" width="170" height="66" rx="9" fill="#14263d" stroke="#4da3e8" stroke-width="2"/>
+<text x="502.5" y="189.0" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Funding articles</text>
+<text x="502.5" y="207.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">RSS + sitemaps +</text>
+<text x="502.5" y="222.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">investor site pages</text>
+<rect x="847.5" y="257.0" width="170" height="66" rx="9" fill="#3a2f12" stroke="#e0a93b" stroke-width="2"/>
+<text x="932.5" y="281.0" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Store &amp; dedupe</text>
+<text x="932.5" y="299.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">Articles, rounds,</text>
+<text x="932.5" y="314.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">contacts, drafts</text>
+<rect x="632.5" y="349.0" width="170" height="66" rx="9" fill="#10301f" stroke="#3fbf7a" stroke-width="2"/>
+<text x="717.5" y="373.0" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Founder email</text>
+<text x="717.5" y="391.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">Public GitHub</text>
+<text x="717.5" y="406.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">profile / org</text>
+<rect x="632.5" y="441.0" width="170" height="66" rx="9" fill="#10301f" stroke="#3fbf7a" stroke-width="2"/>
+<text x="717.5" y="465.0" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Verify email</text>
+<text x="717.5" y="483.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">Finds and checks a</text>
+<text x="717.5" y="498.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">founder's address</text>
+<rect x="1062.5" y="533.0" width="170" height="66" rx="9" fill="#3a1530" stroke="#f06eb0" stroke-width="2"/>
+<text x="1147.5" y="557.0" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Classify &amp; draft</text>
+<text x="1147.5" y="575.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">Funding filter, profile,</text>
+<text x="1147.5" y="590.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">outreach email</text>
+<rect x="1062.5" y="625.0" width="170" height="66" rx="9" fill="#3a1530" stroke="#f06eb0" stroke-width="2"/>
+<text x="1147.5" y="649.0" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Fallback</text>
+<text x="1147.5" y="667.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">Used only if Gemini</text>
+<text x="1147.5" y="682.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">is out of quota</text>
+<rect x="1277.5" y="717.0" width="170" height="66" rx="9" fill="#3b241a" stroke="#f0875a" stroke-width="2"/>
+<text x="1362.5" y="741.0" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Gmail draft</text>
+<text x="1362.5" y="759.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">Draft saved in</text>
+<text x="1362.5" y="774.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">the inbox</text>
+<rect x="1277.5" y="809.0" width="170" height="66" rx="9" fill="#3b241a" stroke="#f0875a" stroke-width="2"/>
+<text x="1362.5" y="833.0" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Send email</text>
+<text x="1362.5" y="851.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">Approved draft</text>
+<text x="1362.5" y="866.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">goes out</text>
+<rect x="1277.5" y="901.0" width="170" height="66" rx="9" fill="#3b241a" stroke="#f0875a" stroke-width="2"/>
+<text x="1362.5" y="925.0" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">Alert</text>
+<text x="1362.5" y="943.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">Summary + link</text>
+<text x="1362.5" y="958.0" fill="#c3cadb" font-size="11.5" text-anchor="middle">to the draft</text>
+</svg>

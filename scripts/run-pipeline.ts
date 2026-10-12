@@ -12,6 +12,7 @@ async function main() {
   const { runPipeline } = await import("../src/lib/pipeline/run");
   const { InvestorEnricher } = await import("../src/lib/investors/enrich");
   const { resolveWebsiteUrl } = await import("../src/lib/research/website");
+  const { researchSearchDocs } = await import("../src/lib/websearch/research");
   const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
   const max = arg("max") ? Number(arg("max")) : undefined;
   const sourceKeys = arg("source")?.split(",");
@@ -28,7 +29,7 @@ async function main() {
     console.log(`REPLAY MODE: re-opened ${count} age-rejected articles from the last ${replay}h (testing only; thesis unchanged)`);
   }
 
-  const summary = await runPipeline({ ai: getAI(), investorLookup: new InvestorEnricher(), resolveWebsite: resolveWebsiteUrl }, { trigger: "cli", force: true, maxArticles: max, sourceKeys, replayMaxAgeHours: replay });
+  const summary = await runPipeline({ ai: getAI(), investorLookup: new InvestorEnricher(), resolveWebsite: resolveWebsiteUrl, researchSearch: researchSearchDocs }, { trigger: "cli", force: true, maxArticles: max, sourceKeys, replayMaxAgeHours: replay });
   const { trace, ...rest } = summary;
   console.log(JSON.stringify(rest, null, 2));
   console.log("\nPER-ARTICLE TRACE (live data)");

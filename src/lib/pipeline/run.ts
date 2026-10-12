@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { db, unwrap } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import type { AIService } from "@/lib/gemini/service";
-import { classifyArticle } from "@/lib/gemini/tasks";
+import { classifyArticle, type ResearchDoc } from "@/lib/gemini/tasks";
 import type { Classification, StartupProfile } from "@/lib/gemini/schemas";
 import { createAdapter as defaultCreateAdapter } from "@/lib/sources/registry";
 import type { FundingSourceAdapter } from "@/lib/sources/types";
@@ -42,6 +42,8 @@ export interface PipelineDeps {
   investorLookup?: InvestorLookup;
   /** Finds a startup's website when the article and search didn't (no AI quota). Off unless supplied (production wiring passes it). */
   resolveWebsite?: (companyName: string) => Promise<string | null>;
+  /** Recent web context for research (Serper/Tavily). Off unless supplied (production wiring passes it). */
+  researchSearch?: (companyName: string) => Promise<ResearchDoc[]>;
 }
 
 export interface RunOptions {
@@ -550,10 +552,11 @@ async function evaluateRound(ctx: Ctx, roundId: string): Promise<RoundEval> {
       docs.push({ url: fa.source_url, text: fa.raw_text ?? `${fa.headline}\n${fa.snippet ?? ""}`, links });
     }
     const research = await ctx.progress.track("research", `Researching ${startup.name}`, async () => {
+      const webDocs = ctx.deps.researchSearch ? await ctx.deps.researchSearch(startup.name).catch(() => []) : [];
       const entries = ctx.deps.investorLookup ? await ctx.deps.investorLookup.gather({ name: startup.name, domain: domainFromUrl(startup.website) }).catch(() => []) : [];
       const r = await researchStartup(
         ctx.deps.ai,
-        { companyName: startup.name, hqCountry: startup.hq_country, articles: docs, website: startup.website, extraDocs: entriesToDocs(entries), resolveWebsite: ctx.deps.resolveWebsite },
+        { companyName: startup.name, hqCountry: startup.hq_country, articles: docs, website: startup.website, extraDocs: [...entriesToDocs(entries), ...webDocs], resolveWebsite: ctx.deps.resolveWebsite },
         ctx.log,
         startup.id,
       );

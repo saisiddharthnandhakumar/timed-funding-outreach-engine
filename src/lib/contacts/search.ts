@@ -22,7 +22,7 @@ export interface WebSearch {
 }
 
 const SOCIAL = ["linkedin.com", "facebook.com", "instagram.com", "x.com", "twitter.com", "youtube.com", "tiktok.com", "reddit.com", "quora.com", "t.me", "wa.me", "whatsapp.com"];
-const isSocial = (host: string) => SOCIAL.some((d) => host === d || host.endsWith(`.${d}`));
+export const isSocial = (host: string) => SOCIAL.some((d) => host === d || host.endsWith(`.${d}`));
 
 /** Follow ONE redirect hop (Gemini grounding links are wrapped redirects) without fetching the target. */
 export async function resolveRedirect(url: string): Promise<string> {
