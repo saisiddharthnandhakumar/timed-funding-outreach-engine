@@ -1,21 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { CheckIcon, CopyIcon } from "./icons";
+import { buttonClass } from "./ui";
 
-export function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
+/** Copies text to the clipboard. `iconOnly` is for inline use next to an address. */
+export function CopyButton({ value, label = "Copy", iconOnly = false, variant = "ghost", size = "sm", className = "" }: { value: string; label?: string; iconOnly?: boolean; variant?: "ghost" | "secondary"; size?: "sm" | "md"; className?: string }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setTimeout(() => setCopied(false), 1600);
     } catch {
-      /* clipboard unavailable (insecure context / permissions): the address is still visible to select */
+      /* clipboard unavailable (insecure context / permissions): the text is still visible to select */
     }
   }
   return (
-    <button type="button" onClick={copy} className="rounded-md border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100" aria-label={`${label} ${value}`}>
-      {copied ? "Copied" : label}
+    <button
+      type="button"
+      onClick={copy}
+      aria-label={iconOnly ? (copied ? "Copied" : `${label}: ${value.length > 40 ? `${value.slice(0, 40)}…` : value}`) : undefined}
+      className={iconOnly ? `grid size-7 place-items-center rounded-md text-ink-3 hover:bg-sunken hover:text-ink ${className}` : buttonClass(variant, size, className)}
+    >
+      {copied ? <CheckIcon className="text-ok" /> : <CopyIcon />}
+      {!iconOnly && <span aria-live="polite">{copied ? "Copied" : label}</span>}
     </button>
   );
 }
