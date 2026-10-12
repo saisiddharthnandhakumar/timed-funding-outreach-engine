@@ -17,6 +17,7 @@ import { enrichBatch, enrichOne, pendingQualifiedStartups, type ContactOutcome }
 import { hasPriorOutreach } from "@/lib/outreach/guard";
 import { selectDraftProvider } from "@/lib/outreach/providers";
 import type { DraftProvider } from "@/lib/outreach/providers/types";
+import { notifyDraftReadySafely, runTelegramSweep, telegramDeps } from "@/lib/telegram/notify";
 import { canonicalizeUrl, errorMessage, mapLimit } from "@/lib/util/text";
 import type { RejectionReason, SourceRow } from "@/types/domain";
 import { evaluateHardFilters, passesGeography, type HardFilterConfig } from "./filters";
@@ -174,6 +175,9 @@ async function executePipeline(deps: PipelineDeps, opts: RunOptions, runId: stri
     if (!opts.skipIngest && !opts.sourceKeys) await backfillContacts(ctx);
     progress.finish("contacts");
     progress.finish("drafts");
+
+    // Stage 4 — Telegram backstop: alerts that never went out, and 24-hour-window reminders that are due.
+    await sendTelegramSweep(ctx);
   } catch (err) {
     await recordError("pipeline", err);
     summary.status = "failed";
@@ -580,11 +584,26 @@ async function evaluateRound(ctx: Ctx, roundId: string): Promise<RoundEval> {
     await setRound(roundId, { status: "drafted" });
     await ctx.log.event("round", roundId, "draft_created", `Draft ${out.status} via ${out.provider}`, { outreach_id: out.outreachId, provider_error: out.providerError });
     if (out.providerError) await ctx.recordError("draft_provider", out.providerError, { type: "outreach", id: out.outreachId });
+    // Tell the scout (Telegram, if configured). A failure here must never fail the round or the run.
+    const telegramProblem = await notifyDraftReadySafely(out.outreachId);
+    if (telegramProblem) await ctx.log.event("outreach", out.outreachId, "telegram_failed", telegramProblem);
     return { eligibility: "qualified", score: assessment.total_score, draft: `${out.status} (${out.provider})` };
   } catch (err) {
     await setRound(roundId, { status: "error", last_error: errorMessage(err) });
     await ctx.recordError(`round:${startup.name}`, err, { type: "round", id: roundId });
     return { eligibility: `error: ${errorMessage(err).slice(0, 80)}`, score: null, draft: "none" };
+  }
+}
+
+/** Best-effort: Telegram trouble is logged and never fails the run. */
+async function sendTelegramSweep(ctx: Ctx): Promise<void> {
+  try {
+    const deps = telegramDeps();
+    if (!deps.config) return;
+    const r = await runTelegramSweep({ ...deps, now: ctx.now });
+    if (r.found || r.reminders || r.failures.length) await ctx.log.event("pipeline", null, "telegram_sweep", `Telegram: ${r.found} new-startup alert(s), ${r.reminders} deadline reminder(s)`, { failures: r.failures });
+  } catch (err) {
+    await ctx.log.event("pipeline", null, "telegram_failed", `telegram sweep: ${errorMessage(err)}`);
   }
 }
 

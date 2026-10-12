@@ -12,9 +12,9 @@ Levels: **1** always visible · **2** one interaction away · **3** advanced / t
 | 2 | Scheduled pipeline (Vercel cron, GitHub Actions) | `/api/cron/pipeline`, `vercel.json`, workflow | unchanged; schedule shown in health sheet + System | 3 | Yes | ✅ live: schedule and last scheduled run shown. Cron route untouched and not triggered. |
 | 3 | Live pipeline progress (8 stages) | `/dashboard` | Settings → System ("Pipeline details"); friendly 5-phase view in health sheet | 3 / 2 | Yes | ✅ live: technical stages render from the latest real run. Friendly 5-phase status not seen mid-run (no run in flight). |
 | 4 | Source ingestion (RSS adapters) | backend | unchanged | – | Yes | ✅ No ingestion code changed; full suite passes. |
-| 5 | Source health per source | `/sources` | Settings → Discovery (Healthy / Delayed / Issue / Paused) | 2 | Yes | ✅ live: 5 of 5 sources, Healthy. |
-| 6 | Enable / disable a source | `/sources` toggle | Settings → Discovery, source detail | 2 | Yes | ⏸ Pause/resume renders; **not clicked** (writes to production). Action unchanged apart from revalidate paths. |
-| 7 | Source performance (reports, delay, wins, unique) | `/sources` | Settings → Discovery → source detail → Technical details | 3 | Yes | ✅ live: Technical details expanded on a real source. |
+| 5 | Source health per source | `/sources` | Settings → Sources (Healthy / Delayed / Issue / Paused) | 2 | Yes | ✅ live: 5 of 5 sources, Healthy. |
+| 6 | Enable / disable a source | `/sources` toggle | Settings → Sources, source detail | 2 | Yes | ⏸ Pause/resume renders; **not clicked** (writes to production). Action unchanged apart from revalidate paths. |
+| 7 | Source performance (reports, delay, wins, unique) | `/sources` | Settings → Sources → source detail → Technical details | 3 | Yes | ✅ live: Technical details expanded on a real source. |
 | 8 | Ingestion delay metric | `/dashboard` tile, `/sources` | Settings → System, as a 24 h median | 3 | Yes | ✅ live: System page shows the 24 h value. Window changed to articles *published* in the period after the first reading was 84.6 h from backfill. |
 | 9 | Funding event list (every round) | `/feed` | Opportunities → Discoveries (Relevant) | 2 | Yes | ✅ live: Discoveries loads; Relevant is empty because the DB has no funding rounds. Rounds list path not rendered with data. |
 | 10 | Rejected rounds + reasons | `/feed` | Opportunities → Discoveries → Filtered | 3 | Yes | ◐ Filtered chip and reasons render for articles (live). No rejected *rounds* exist yet to display. |
@@ -64,5 +64,5 @@ Levels: **1** always visible · **2** one interaction away · **3** advanced / t
 | 54 | Global search (⌘K) | – | shell | 1 | Yes | ✅ live: ⌘K opens, searches, Esc closes and returns focus. No startups in DB to open a result. |
 | 55 | Old deep links | `/dashboard /feed /qualified /sources /startups/:id` | redirected to new routes | – | Yes | ✅ curl: all five redirect (308); malformed ids show Not found. |
 | 56 | Authentication | none (login removed 2026-10-12); `CRON_SECRET` on cron endpoint | unchanged | – | n/a | There is **no login** (removed 2026-10-12). Cron endpoint's `CRON_SECRET` untouched. Not a regression. |
-| 57 | Admin functionality (source toggle, manual run, thesis edit, re-run contacts) | scattered | Settings (Discovery, System, Thesis) and startup page | 2 / 3 | Yes | ◐ See rows 1, 6, 21, 46: present, not exercised against production. |
+| 57 | Admin functionality (source toggle, manual run, thesis edit, re-run contacts) | scattered | Settings (Sources, System, Thesis) and startup page | 2 / 3 | Yes | ◐ See rows 1, 6, 21, 46: present, not exercised against production. |
 | 58 | Filters | none | Opportunities: status chips + "Filters" (stage, sector, score, location, funding size, age, source) | 1 / 2 | Yes | ✅ tests for parsing and filtering; popover opens, anchored in view ✅ live; submit with real data not run. |

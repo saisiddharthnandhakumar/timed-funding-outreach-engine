@@ -17,7 +17,8 @@ const nextConfig: NextConfig = {
       { source: "/dashboard", destination: "/today", permanent: true },
       { source: "/feed", destination: "/opportunities?view=discoveries", permanent: true },
       { source: "/qualified", destination: "/opportunities", permanent: true },
-      { source: "/sources", destination: "/settings/discovery", permanent: true },
+      { source: "/sources", destination: "/settings/sources", permanent: true },
+      { source: "/settings/discovery", destination: "/settings/sources", permanent: true },
       { source: "/startups/:id", destination: "/opportunities/:id", permanent: true },
     ];
   },

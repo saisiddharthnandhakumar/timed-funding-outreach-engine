@@ -2,7 +2,7 @@ import { OUTREACH_SAFE, STATUS_RANK, contactKey, type ContactCandidate, type Con
 
 export type PreferredType = ContactKind | "not_found";
 
-const SOURCE_ORDER = { company_website: 0, github: 1, web_search: 2, pattern: 3, manual: 0 } as const;
+const SOURCE_ORDER = { company_website: 0, github: 1, web_search: 2, hunter: 2, pattern: 3, manual: 0 } as const;
 const MAILBOX_ORDER = { partnerships: 0, general: 0, press: 1, other: 1, support: 2 } as const;
 
 const roleOrder = (role: string | null) => (/\bceo\b|chief executive/i.test(role ?? "") ? 0 : /founder/i.test(role ?? "") ? 1 : 2);

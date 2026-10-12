@@ -12,7 +12,7 @@ V1 code is complete (pipeline, schema, UI, tests). The Supabase schema has been 
 
 ## Using the app
 
-Four destinations: **Today** (morning briefing: what needs attention, drafts ready, one-line system health), **Opportunities** (the work queue: *Active* qualified startups, *Discoveries* for the broader funding feed), **Drafts** (review queue and review view) and **Settings** (Investment Thesis, Discovery sources, Integrations, System). ⌘K (or Ctrl+K) searches startups, founders and sectors. Pipeline internals, raw timestamps, rejection codes and model metadata are deliberately a click or two deeper: startup page → *Sources & evidence* / *Technical details*, and Settings → System. Old URLs (`/dashboard`, `/feed`, `/qualified`, `/sources`, `/startups/:id`) redirect. Design notes: [`docs/ui-redesign-plan.md`](docs/ui-redesign-plan.md).
+Four destinations: **Today** (morning briefing: what needs attention, drafts ready, one-line system health, a 24-hour funnel from articles scanned to drafts, and a **Scan now** button that shows the scan live while it runs), **Opportunities** (the work queue: *Active* qualified startups, *Discoveries* for the broader funding feed), **Drafts** (review queue and review view) and **Settings** (Investment Thesis, Sources, Integrations, System). ⌘K (or Ctrl+K) searches startups, founders and sectors. Pipeline internals, raw timestamps, rejection codes and model metadata are deliberately a click or two deeper: startup page → *Sources & evidence* / *Technical details*, and Settings → System. Old URLs (`/dashboard`, `/feed`, `/qualified`, `/sources`, `/settings/discovery`, `/startups/:id`) redirect. Design notes: [`docs/ui-redesign-plan.md`](docs/ui-redesign-plan.md).
 
 ## Problem
 
@@ -104,9 +104,10 @@ Waterfall per startup (cheapest and most reliable first):
 1. **Official website** – homepage + About/Team/Contact/Press pages (max 8, same domain, robots.txt respected, SSRF-guarded). Extracts `mailto:` links, visible text, bracket-obfuscated addresses, JSON-LD and Cloudflare-protected addresses. An address is tied to a founder only with evidence (schema.org Person, the founder's name beside it, or a mailbox name that matches on the company domain).
 2. **GitHub public API** – a profile that voluntarily lists an email *and* is tied to the company (company field, website, bio or company-domain email); also the company org's public email.
 3. **Google-grounded search** (Gemini free tier, monthly-budgeted) – cited pages are fetched and an address counts only if it literally appears on the page. Addresses the model merely mentions stay `unverified`.
-4. **Pattern guesses** (`first@`, `first.last@`…) – stored for later, labelled `pattern_guessed`, **never used for outreach or drafts**.
+4. **Hunter Email Finder** (optional, `HUNTER_API_KEY`) – for each founder that steps 1–3 left without a confirmed address, asks Hunter for their work email at the company domain. Only a mailbox Hunter reports as `valid` becomes `provider_verified` (and may prefill a draft); `accept_all` / unknown answers are stored as `domain_valid_only` and never used. One credit per lookup (Hunter charges nothing when it finds no address), capped by `CONTACT_HUNTER_FINDER_MONTHLY_BUDGET` (default 20) so the free plan is never exceeded. See [Hunter setup](#hunter-founder-emails).
+5. **Pattern guesses** (`first@`, `first.last@`…) – stored for later, labelled `pattern_guessed`, **never used for outreach or drafts**.
 
-Every address gets syntax + MX checks. Hunter (optional, free-tier `HUNTER_API_KEY`) can upgrade a guessed address to `provider_verified`.
+Every address gets syntax + MX checks. Hunter's verifier (same key, `CONTACT_VERIFIER_MONTHLY_BUDGET`) can additionally upgrade a guessed address to `provider_verified`.
 
 | Status | Meaning |
 |---|---|
@@ -121,6 +122,35 @@ Every address gets syntax + MX checks. Hunter (optional, free-tier `HUNTER_API_K
 Re-running: *Re-run contact search* on the startup page, or `npm run contacts -- --startup=<uuid> [--force]` / `npm run contacts -- --all-qualified --limit=50`. Previously qualified startups with no result yet are backfilled automatically (up to `CONTACT_BACKFILL_PER_RUN` per pipeline run); results are cached for `CONTACT_REENRICH_DAYS` (default 14). Limits: 3 concurrent startups, 8 pages each, retries with backoff and jitter, a per-host delay, monthly budgets for the search and verifier calls. One failing startup never fails the batch.
 
 Requires migration `supabase/migrations/20261012000006_contact_enrichment.sql` (apply it **before** deploying). Optional env vars: `GITHUB_TOKEN`, `HUNTER_API_KEY`, `CONTACT_*` (see `.env.example`). No new GitHub Actions secrets are needed: the existing 2-hourly workflow already triggers the pipeline.
+
+### Hunter (founder emails)
+
+1. Create a free account at [hunter.io](https://hunter.io), then open **API** in the dashboard and copy your key.
+2. Put it in `.env.local` as `HUNTER_API_KEY=...` and in Vercel (Project → Settings → Environment Variables, Production). Redeploy.
+3. Apply `supabase/migrations/20261012000008_hunter_contact_source.sql` (lets a contact be stored with source `hunter`). Nothing else changes in the database.
+4. Check **Settings → Integrations → Founder emails (Hunter)** says *Connected*. Re-run a startup's contact search (startup page → *Re-run contact search*, or `npm run contacts -- --startup=<uuid> --force`) and the new contact appears with source *Hunter* and its score in the evidence column.
+
+Hunter only helps when the app knows a founder's **full name** and the company's **website domain**; the key is sent as an `X-API-KEY` header, never in a URL. Check usage in Hunter's dashboard; the app also self-limits (`CONTACT_HUNTER_FINDER_MONTHLY_BUDGET`, `CONTACT_VERIFIER_MONTHLY_BUDGET`). Code: `src/lib/contacts/hunter.ts`, wired in `src/lib/contacts/pipeline.ts` (step D).
+
+## Telegram alerts
+
+Tells the scout, in Telegram, when:
+
+1. **A startup has been found and its email drafted** (sent as soon as the draft exists: name, stage and amount, fit score, who the draft is addressed to, how much of the 24-hour window is left, and a link to the draft).
+2. **Time is running out**: one message **2 hours before** the 24-hour outreach window closes, for any draft that has not gone out (status *generated*, *draft created* or *approved*; a sent or rejected draft is never reminded). The window runs from the funding announcement, the same clock the pipeline uses to decide a startup is still timely.
+
+Each alert is sent **at most once per draft** (an atomic claim row in `pipeline_events`, unique index from `20261012000009_telegram_once_per_draft.sql`); a failed send is retried by the next sweep. Telegram being down or unconfigured never fails a pipeline run.
+
+**Setup**
+
+1. In Telegram open **@BotFather** → `/newbot` → pick a name → copy the token.
+2. Open your new bot and press **Start** (a bot cannot message you until you do). For a group, add the bot to the group and send a message there.
+3. Put the token in `.env.local` as `TELEGRAM_BOT_TOKEN`, run `npm run telegram`: it prints `TELEGRAM_CHAT_ID=...`; add that too. Also set `APP_URL` (your deployed URL) so alerts link to the draft.
+4. `npm run telegram -- --test` sends a test message.
+5. Add the same three variables in Vercel (Production) and redeploy. Apply the migration above.
+6. For the **2-hour reminder**: the workflow `.github/workflows/telegram-reminders.yml` calls `/api/cron/reminders` every 10 minutes (Vercel Hobby cron only runs daily). It uses the same repo secrets as the pipeline workflow, `APP_URL` and `CRON_SECRET`. Every pipeline run also checks reminders at its end.
+
+GitHub may start a scheduled run a few minutes late, so the reminder lands *about* 2 hours before the window closes (never later than the window itself). Tunables: `OUTREACH_WINDOW_HOURS` (24), `TELEGRAM_REMINDER_LEAD_HOURS` (2). Code: `src/lib/telegram/`.
 
 ## Sending email (Resend, human-triggered)
 

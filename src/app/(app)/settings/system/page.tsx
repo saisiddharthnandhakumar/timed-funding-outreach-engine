@@ -60,7 +60,7 @@ export default async function SystemPage() {
           <div><dt className="text-xs font-medium text-faint">Expected cadence</dt><dd className="mt-0.5 text-ink">About every {EXPECTED_CADENCE_MINUTES / 60} hours</dd></div>
           <div><dt className="text-xs font-medium text-faint">Next expected scan</dt><dd className="mt-0.5 text-ink">{d.health.nextExpectedAt ? `Around ${formatDateTime(d.health.nextExpectedAt)}` : "—"}</dd></div>
           <div><dt className="text-xs font-medium text-faint">Last scheduled run</dt><dd className="mt-0.5 text-ink">{d.health.lastScheduledRunAt ? `${ago(d.health.lastScheduledRunAt)} (${d.health.lastScheduledRunStatus})` : "None yet"}</dd></div>
-          <div><dt className="text-xs font-medium text-faint">Source diagnostics</dt><dd className="mt-0.5"><Link href="/settings/discovery" className="font-medium text-accent hover:underline">Open Discovery</Link></dd></div>
+          <div><dt className="text-xs font-medium text-faint">Source diagnostics</dt><dd className="mt-0.5"><Link href="/settings/sources" className="font-medium text-accent hover:underline">Open Sources</Link></dd></div>
         </dl>
       </Section>
 

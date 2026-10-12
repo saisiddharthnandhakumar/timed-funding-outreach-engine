@@ -29,7 +29,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <aside className="hidden border-r border-line bg-surface lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:px-3 lg:py-5">
           <div className="px-3 pb-5"><Wordmark /></div>
-          <div className="px-1 pb-4"><SearchTrigger variant="field" /></div>
           <nav aria-label="Primary"><NavLinks variant="side" /></nav>
           <div className="mt-auto space-y-1 border-t border-line pt-3">
             <SidebarHealth />
@@ -41,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-surface/95 px-4 backdrop-blur lg:hidden">
             <Wordmark />
             <div className="flex items-center gap-1">
-              <SearchTrigger variant="icon" />
+              <SearchTrigger />
               <ThemeToggle />
             </div>
           </header>

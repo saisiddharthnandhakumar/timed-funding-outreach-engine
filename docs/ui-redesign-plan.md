@@ -16,7 +16,7 @@
 /drafts                Review queue
 /drafts/[id]           Draft review
 /settings              Investment Thesis
-/settings/discovery    Sources
+/settings/sources      Sources
 /settings/integrations Read-only integration status
 /settings/system       Pipeline, runs, events, diagnostics
 
@@ -44,7 +44,7 @@ Four destinations only: **Today · Opportunities · Drafts · Settings**.
 | **Startup detail** | A Decision header → B Why now → C Why it fits (+ collapsed score breakdown) → D Company snapshot → E Product & traction → F Founders → G Outreach recommendation (+ collapsed contact details) → H Sources & evidence (collapsed) → I Technical details (collapsed, secondary) |
 | **Drafts** | "n ready for review" → list (startup, founder, subject, age, Review) with To review / Approved / Done filter |
 | **Draft review** | Header (startup, to, subject) → email body → "Why this message" → one primary action, Gmail / Copy, More (mark sent, reject) → "View startup context" |
-| **Settings** | Section nav (Investment Thesis · Discovery · Integrations · System) → page |
+| **Settings** | Section nav (Investment Thesis · Sources · Integrations · System) → page |
 
 ### Progressive disclosure strategy
 
@@ -91,7 +91,7 @@ Ordering: **fit score desc, then freshest announcement first**. There is no sepa
 
 ## 6. Old → new route mapping
 
-`next.config.ts` `redirects()` (308): `/dashboard → /today`, `/feed → /opportunities?view=discoveries`, `/qualified → /opportunities`, `/sources → /settings/discovery`, `/startups/:id → /opportunities/:id`. No old page remains reachable, so there is no duplicate navigation.
+`next.config.ts` `redirects()` (308): `/dashboard → /today`, `/feed → /opportunities?view=discoveries`, `/qualified → /opportunities`, `/sources → /settings/sources`, `/settings/discovery → /settings/sources`, `/startups/:id → /opportunities/:id`. No old page remains reachable, so there is no duplicate navigation.
 
 ## 7. Accessibility
 

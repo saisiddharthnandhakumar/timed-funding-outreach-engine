@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const TONE: Record<string, Tone> = { healthy: "ok", delayed: "warn", issue: "bad", paused: "neutral", idle: "neutral" };
 
-export default async function DiscoveryPage() {
+export default async function SourcesPage() {
   if (!configured()) return <SetupNotice message="Supabase is not configured." />;
   const { sources, articleCounts, metrics, medianDelay } = await sourcesData();
   const healthy = sources.filter((s) => s.level === "healthy").length;

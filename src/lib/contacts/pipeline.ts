@@ -5,7 +5,8 @@ import { crawlCompanySite } from "./crawler";
 import { extractFromHtml } from "./extract";
 import type { GithubProvider } from "./github";
 import { RateLimiter, type PageFetcher } from "./http";
-import { sameCompanyDomain } from "./names";
+import { registrableDomain, sameCompanyDomain } from "./names";
+import { candidateFromHunter, finderName, type FounderEmailFinder } from "./hunter";
 import { guessFounderEmails, inferPattern } from "./patterns";
 import { mergeAll, selectPreferred, type PreferredType } from "./rank";
 import type { RobotsGuard } from "./robots";
@@ -33,8 +34,10 @@ export interface ContactDeps {
   github: GithubProvider | null;
   search: WebSearch | null;
   verifier: EmailVerifier | null;
+  /** Hunter Email Finder: asks for a specific founder's work address. Optional; budgeted per month. */
+  finder?: FounderEmailFinder | null;
   budget: Budget;
-  config: { maxPages: number; reenrichDays: number; verifierMonthlyLimit: number; maxVerificationsPerCompany: number; /** politeness delay between requests to one host (default 300 ms) */ crawlDelayMs?: number };
+  config: { maxPages: number; reenrichDays: number; verifierMonthlyLimit: number; maxVerificationsPerCompany: number; /** monthly Email Finder lookups (Hunter free plan is small) */ finderMonthlyLimit?: number; /** politeness delay between requests to one host (default 300 ms) */ crawlDelayMs?: number };
   now?: () => Date;
   log?: (eventType: string, message: string, meta?: Record<string, unknown>) => Promise<void>;
 }
@@ -159,6 +162,30 @@ export async function enrichStartupContacts(deps: ContactDeps, startupId: string
       }
     }
 
+    // ── D. Hunter Email Finder: a founder with no confirmed address yet, at a domain we know ──
+    if (deps.finder && domain) {
+      const targets = founders.filter((f) => lacksConfirmed(f) && finderName(f));
+      if (targets.length) attempted++;
+      let hunterErrored = false;
+      for (const f of targets) {
+        if (!(await deps.budget.consume(deps.finder.name, deps.config.finderMonthlyLimit ?? 20))) {
+          warnings.push(`${deps.finder.name}: monthly email-finder budget exhausted`);
+          hunterErrored = true;
+          break;
+        }
+        try {
+          const hit = await deps.finder.find({ domain: registrableDomain(domain), ...finderName(f)! });
+          const c = hit ? candidateFromHunter(f, hit, domain) : null;
+          if (c) found.push(c);
+        } catch (err) {
+          hunterErrored = true;
+          warnings.push(`${deps.finder.name}: ${err instanceof QuotaExhaustedError ? "quota exhausted" : errorMessage(err)}`);
+          if (err instanceof QuotaExhaustedError) break;
+        }
+      }
+      if (hunterErrored) errored++;
+    }
+
     // ── guessed candidates (kept for later, never used for outreach) ──
     if (domain) {
       const known = found.filter((c) => c.kind === "founder" && c.email && c.founderName && confirmed(c)).map((c) => ({ email: c.email!, name: c.founderName! }));
@@ -183,7 +210,7 @@ export async function enrichStartupContacts(deps: ContactDeps, startupId: string
     }
     if (deps.verifier) {
       let spent = 0;
-      const worth = checked.filter((c) => c.kind === "founder" && c.email && c.mxValid === true && (c.status === "pattern_guessed" || c.status === "domain_valid_only"));
+      const worth = checked.filter((c) => c.kind === "founder" && c.email && c.mxValid === true && (c.status === "pattern_guessed" || c.status === "domain_valid_only") && c.source !== "hunter");
       for (const c of worth) {
         if (spent >= deps.config.maxVerificationsPerCompany) break;
         if (!(await deps.budget.consume(deps.verifier.name, deps.config.verifierMonthlyLimit))) {

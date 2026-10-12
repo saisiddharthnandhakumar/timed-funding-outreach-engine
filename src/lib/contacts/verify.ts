@@ -72,8 +72,7 @@ export class HunterVerifier implements EmailVerifier {
   async verify(email: string): Promise<ProviderVerdict> {
     const url = new URL("https://api.hunter.io/v2/email-verifier");
     url.searchParams.set("email", email);
-    url.searchParams.set("api_key", this.apiKey); // never logged
-    const res = await this.fetchJson(url, { signal: AbortSignal.timeout(15_000) });
+    const res = await this.fetchJson(url, { headers: { "X-API-KEY": this.apiKey }, signal: AbortSignal.timeout(15_000) }); // key in a header, never in the URL
     if (res.status === 429 || res.status === 402 || res.status === 403) throw new QuotaExhaustedError("hunter");
     if (!res.ok) throw new Error(`Hunter verifier HTTP ${res.status}`);
     const status = ((await res.json()) as { data?: { status?: string } }).data?.status;

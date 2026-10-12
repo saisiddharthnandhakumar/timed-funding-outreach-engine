@@ -17,7 +17,7 @@ _Audited 2026-10-12 against `main` (c496d10). Every user-facing route, what it s
 | `/startups/[id]` | Startup detail | Company profile table, founders, contact discovery card + table + re-run, rounds & source articles, research evidence, fit assessments (breakdown bars, signals, concerns, reasoning, model), generated outreach | Re-run contact search, copy email | Yes, but in decision order | **`/opportunities/[id]`** | A–G L1, H L2, I L3 | Rebuilt as a decision story (header → why now → why it fits → snapshot → product & traction → founders → outreach). Evidence and technical details are collapsed. |
 | `/drafts` | All outreach, editable inline | Per draft: startup, stage·amount, score pill, status badge, provider, age, editable recipient/subject/body, Approve / Send email / Mark as sent / Reject | Edit, approve, send (Resend), mark sent, reject | **Yes** | **`/drafts`** (list) + **`/drafts/[id]`** (review) | L1 | The list becomes a simple review queue. All edit/approve/send/reject actions live on the review view. Server actions unchanged. |
 | `/settings` | Thesis editor | 17 controls on one page: geography, 10 stage checkboxes, max age, min score, 3 chip pickers (sectors, subsectors, excluded), business models, free-text thesis, 6 criterion weights + descriptions, recency bands, stage points; version history | Save as new version | The scout, but for ~6 of the controls | **`/settings`** (Investment Thesis) | Basics L1; refinements L2; scoring L3 | Six essentials by default; "Advanced scoring" and "More preferences" collapsed; version history behind a disclosure. |
-| `/sources` | Source polling health | Per source: enabled toggle, type, interval, last polled, last success, items, articles stored, last error; source performance (reports, avg ingestion delay, wins, unique discoveries) | Enable / disable source | Engineer; scout only needs "are feeds healthy" | **`/settings/discovery`** | L2 (health) / L3 (performance, config) | Plain list with Healthy / Delayed / Issue / Paused. Detail row opens on click. HTTP-level and config detail only under "Technical details". |
+| `/sources` | Source polling health | Per source: enabled toggle, type, interval, last polled, last success, items, articles stored, last error; source performance (reports, avg ingestion delay, wins, unique discoveries) | Enable / disable source | Engineer; scout only needs "are feeds healthy" | **`/settings/sources`** | L2 (health) / L3 (performance, config) | Plain list with Healthy / Delayed / Issue / Paused. Detail row opens on click. HTTP-level and config detail only under "Technical details". |
 | _(none)_ | — | — | — | — | **`/settings/integrations`** | L2 | New, read-only. Shows whether Gemini, Gmail drafts, Resend sending, cron secret, and the schedulers are configured. No secrets are ever sent to the client. |
 | _(none)_ | — | — | — | — | **`/settings/system`** | L3 | Receives the full pipeline UI: manual run, 8-stage progress, run history, errors, event log, scheduler details, source diagnostics. |
 | `/api/pipeline/run` | Manual run endpoint | — | POST | — | unchanged | — | Used by the Run button on System and in the health sheet. |
@@ -33,7 +33,7 @@ _Audited 2026-10-12 against `main` (c496d10). Every user-facing route, what it s
 | `/dashboard` | `/today` | 308 |
 | `/feed` | `/opportunities?view=discoveries` | 308 |
 | `/qualified` | `/opportunities` | 308 |
-| `/sources` | `/settings/discovery` | 308 |
+| `/sources` | `/settings/sources` | 308 |
 | `/startups/:id` | `/opportunities/:id` | 308 |
 
 ## 3. Navigation

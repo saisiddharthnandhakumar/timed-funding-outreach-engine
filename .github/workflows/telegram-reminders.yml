@@ -1,0 +1,17 @@
+# Deadline reminders for Telegram: tells the scout when a drafted startup has ~2 hours left in its 24-hour outreach window.
+# Needs repository secrets APP_URL (e.g. https://your-app.vercel.app) and CRON_SECRET (same ones as pipeline-cron).
+# GitHub may start scheduled runs a few minutes late, so the reminder lands roughly (not to the second) 2 hours before.
+name: telegram-reminders
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send any due Telegram alerts
+        run: |
+          curl --fail --silent --show-error --max-time 60 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/reminders"

@@ -41,7 +41,10 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     }, 60_000);
     const onRun = () => setTimeout(load, 3_000);
     window.addEventListener("pipeline-run-started", onRun);
+    const onFinished = () => void load();
+    window.addEventListener("pipeline-run-finished", onFinished);
     return () => {
+      window.removeEventListener("pipeline-run-finished", onFinished);
       clearTimeout(first);
       clearInterval(id);
       window.removeEventListener("pipeline-run-started", onRun);

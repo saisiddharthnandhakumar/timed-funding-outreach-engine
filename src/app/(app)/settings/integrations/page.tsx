@@ -21,13 +21,16 @@ export default function IntegrationsPage() {
   const sendConfig = { apiKey: e.RESEND_API_KEY, fromEmail: e.RESEND_FROM_EMAIL, fromName: e.RESEND_FROM_NAME ?? e.OUTREACH_SENDER_NAME, replyTo: e.RESEND_REPLY_TO };
   const sendProblem = sendConfigProblem(sendConfig);
   const gmail = hasGmailEnv();
+  const telegram = Boolean(e.TELEGRAM_BOT_TOKEN && e.TELEGRAM_CHAT_ID);
 
   const items: Item[] = [
     { name: "Research & scoring", what: "Reads funding news, researches startups and scores them against your thesis (Gemini).", ...(e.GOOGLE_GENERATIVE_AI_API_KEY ? { tone: "ok" as const, status: "Connected" } : { tone: "bad" as const, status: "Not set up", note: "Add GOOGLE_GENERATIVE_AI_API_KEY." }) },
     { name: "Sending email", what: "Sends an approved draft when you click Send (Resend). Nothing is ever sent automatically.", ...(sendProblem ? { tone: "warn" as const, status: "Not set up", note: sendProblem } : { tone: "ok" as const, status: "Ready", note: `Sends from ${formatFrom(sendConfig)}${e.RESEND_REPLY_TO ? `, replies go to ${e.RESEND_REPLY_TO}` : ""}.` }) },
     { name: "Gmail drafts", what: "Also creates each draft in your Gmail so you can send it from there.", ...(gmail ? { tone: "ok" as const, status: "Connected" } : { tone: "neutral" as const, status: "Not connected", note: "Drafts are stored in the app. “Open in Gmail” on a draft still works." }) },
     { name: "Scheduled scans", what: "Runs the scan automatically.", ...(e.CRON_SECRET ? { tone: "ok" as const, status: "Protected", note: `Vercel: ${SCHEDULE.vercel.label}. GitHub Actions: ${SCHEDULE.github.label}.` } : { tone: "bad" as const, status: "Not protected", note: "Set CRON_SECRET so scheduled runs are authorised." }) },
-    { name: "Contact search extras", what: "Optional lookups that help find founder emails (GitHub, Hunter).", tone: e.GITHUB_TOKEN || e.HUNTER_API_KEY ? "ok" : "neutral", status: e.GITHUB_TOKEN || e.HUNTER_API_KEY ? "Connected" : "Optional", note: [e.GITHUB_TOKEN ? "GitHub" : null, e.HUNTER_API_KEY ? "Hunter" : null].filter(Boolean).join(", ") || "Not needed. Public sources are always searched." },
+    { name: "Founder emails (Hunter)", what: "Looks up a founder’s work email when their own site, GitHub and the web don’t publish one. Only addresses Hunter verifies as valid are ever put on a draft.", ...(e.HUNTER_API_KEY ? { tone: "ok" as const, status: "Connected", note: `Up to ${e.CONTACT_HUNTER_FINDER_MONTHLY_BUDGET} lookups a month, so the free plan is never exceeded.` } : { tone: "neutral" as const, status: "Optional", note: "Not connected. Public sources are still searched." }) },
+    { name: "Contact search extras", what: "Raises GitHub’s lookup limit for finding public founder emails.", tone: e.GITHUB_TOKEN ? "ok" : "neutral", status: e.GITHUB_TOKEN ? "Connected" : "Optional", note: e.GITHUB_TOKEN ? undefined : "Not needed. Public sources are always searched." },
+    { name: "Telegram alerts", what: `Messages you when a startup is found and its draft is ready, and again ${e.TELEGRAM_REMINDER_LEAD_HOURS} hours before its ${e.OUTREACH_WINDOW_HOURS}-hour window closes.`, ...(telegram ? { tone: "ok" as const, status: "Connected", note: e.APP_URL ? undefined : "Set APP_URL so the alerts link to the draft." } : { tone: "neutral" as const, status: "Not set up", note: "Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID (README → Telegram)." }) },
   ];
 
   return (

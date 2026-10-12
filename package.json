@@ -12,6 +12,7 @@
     "db:migrate": "tsx scripts/apply-migrations.ts",
     "pipeline": "tsx scripts/run-pipeline.ts",
     "contacts": "tsx scripts/enrich-contacts.ts",
+    "telegram": "tsx scripts/telegram-setup.ts",
     "gemini:models": "tsx scripts/list-gemini-models.ts",
     "check": "npm run lint && npm run typecheck && npm test && npm run build"
   },
@@ -21,10 +22,13 @@
     "cheerio": "^1.2.0",
     "domhandler": "^6.0.1",
     "fast-xml-parser": "^5.11.2",
+    "framer-motion": "^14.1.0",
     "next": "16.4.0",
     "pg": "^8.23.1",
     "react": "19.3.0",
+    "react-countup": "^6.5.3",
     "react-dom": "19.3.0",
+    "reaviz": "^16.2.2",
     "server-only": "^0.0.1",
     "zod": "^4.6.5"
   },

@@ -25,11 +25,20 @@ const schema = z.object({
   RESEND_REPLY_TO: optional,
   GITHUB_TOKEN: optional,
   HUNTER_API_KEY: optional,
+  TELEGRAM_BOT_TOKEN: optional,
+  TELEGRAM_CHAT_ID: optional,
+  /** Public URL of the deployed app; used for links inside Telegram messages. */
+  APP_URL: optional,
+  /** Length of the outreach window, counted from the funding announcement. */
+  OUTREACH_WINDOW_HOURS: z.preprocess(blank, z.coerce.number().min(1).max(168).default(24)),
+  /** How long before the window closes the "time is running out" alert is sent. */
+  TELEGRAM_REMINDER_LEAD_HOURS: z.preprocess(blank, z.coerce.number().min(0.25).max(48).default(2)),
   CONTACT_MAX_PAGES: z.preprocess(blank, z.coerce.number().int().min(1).max(20).default(8)),
   CONTACT_CONCURRENCY: z.preprocess(blank, z.coerce.number().int().min(1).max(6).default(3)),
   CONTACT_REENRICH_DAYS: z.preprocess(blank, z.coerce.number().min(0).max(365).default(14)),
   CONTACT_SEARCH_MONTHLY_BUDGET: z.preprocess(blank, z.coerce.number().int().min(0).max(100000).default(400)),
   CONTACT_VERIFIER_MONTHLY_BUDGET: z.preprocess(blank, z.coerce.number().int().min(0).max(100000).default(40)),
+  CONTACT_HUNTER_FINDER_MONTHLY_BUDGET: z.preprocess(blank, z.coerce.number().int().min(0).max(100000).default(20)),
   CONTACT_BACKFILL_PER_RUN: z.preprocess(blank, z.coerce.number().int().min(0).max(50).default(5)),
   PIPELINE_MAX_ARTICLES_PER_RUN: z.preprocess(blank, z.coerce.number().int().min(1).max(500).default(40)),
   PIPELINE_CONCURRENCY: z.preprocess(blank, z.coerce.number().int().min(1).max(8).default(2)),

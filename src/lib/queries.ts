@@ -113,14 +113,65 @@ export async function opportunitiesData(): Promise<Opportunity[]> {
   return list.sort(byPriority);
 }
 
+/** One window of the scouting funnel: what came in, and where each thing dropped out. */
+export interface FunnelCounts {
+  scanned: number;
+  /** Not older than the thesis's age window. */
+  recent: number;
+  /** Recent *and* actually a funding announcement. */
+  funding: number;
+  /** Passed stage, geography and de-duplication: a funding event we evaluated. */
+  eligible: number;
+  qualified: number;
+  drafted: number;
+  dropped: { notFunding: number; tooOld: number; outsideThesis: number; belowScore: number };
+}
+
+async function funnelCounts(from: string, to: string): Promise<FunnelCounts> {
+  const seen = (q: any) => q.gte("first_seen_at", from).lt("first_seen_at", to);
+  const rejected = (reasons: string[]) => count("funding_articles", (q) => seen(q).in("rejection_reason", reasons));
+  const [scanned, tooOld, notFunding, outsideThesis, rounds, assessed, qualified, drafted] = await Promise.all([
+    count("funding_articles", seen),
+    rejected(["announcement_too_old"]),
+    rejected(["not_funding_announcement"]),
+    rejected(["wrong_stage", "wrong_geography"]),
+    count("funding_rounds", (q) => q.gte("created_at", from).lt("created_at", to)),
+    count("fit_assessments", (q) => q.gte("assessed_at", from).lt("assessed_at", to)),
+    count("fit_assessments", (q) => q.gte("assessed_at", from).lt("assessed_at", to).eq("qualified", true)),
+    count("outreach", (q) => q.gte("created_at", from).lt("created_at", to)),
+  ]);
+  // Each stage is a subset of the one before it, so the funnel never widens (duplicates and re-scores can otherwise inflate a later count).
+  const recent = Math.max(0, scanned - tooOld);
+  const funding = Math.max(0, recent - notFunding);
+  const eligible = Math.min(funding, rounds);
+  return {
+    scanned, recent, funding, eligible,
+    qualified: Math.min(eligible, qualified),
+    drafted: Math.min(qualified, drafted),
+    dropped: { notFunding, tooOld, outsideThesis, belowScore: Math.max(0, assessed - qualified) },
+  };
+}
+
+/** The last 24 hours of the funnel, plus the 24 hours before that for comparison. */
+export async function funnelData() {
+  const now = Date.now();
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const [current, previous] = await Promise.all([
+    funnelCounts(iso(now - 24 * 3_600_000), iso(now + 60_000)),
+    funnelCounts(iso(now - 48 * 3_600_000), iso(now - 24 * 3_600_000)),
+  ]);
+  return { current, previous };
+}
+
 export async function todayData() {
-  const [opportunities, health, newDiscoveries] = await Promise.all([
+  const [opportunities, health, newDiscoveries, funnel] = await Promise.all([
     opportunitiesData(),
     healthSnapshot(),
     count("funding_rounds", (q) => q.gte("created_at", since24h()).neq("status", "rejected")),
+    funnelData(),
   ]);
   const attention = opportunities.filter((o) => needsAttention(o));
-  return { attention, total: opportunities.length, health, newDiscoveries, draftsReady: health.draftsReady };
+  return { attention, total: opportunities.length, health, newDiscoveries, draftsReady: health.draftsReady, funnel };
 }
 
 // ───────────────────────────── discoveries ─────────────────────────────

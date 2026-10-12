@@ -2,6 +2,8 @@ import Link from "next/link";
 import { todayData, configured } from "@/lib/queries";
 import { OpportunityCard } from "@/components/opportunity/opportunity-card";
 import { SystemHealthLine } from "@/components/shell/system-health";
+import { ScanPanel } from "@/components/scan-panel";
+import FunnelChartBig from "@/components/ui/funnel-chart-big";
 import { SetupNotice, Section, btn } from "@/components/ui";
 import { ago, greeting, plural } from "@/lib/format";
 
@@ -34,6 +36,7 @@ export default async function TodayPage() {
           </div>
         )}
         <div className="mt-4 text-sm"><SystemHealthLine initial={{ level: d.health.level, text: d.health.text }} /></div>
+        <div className="mt-6"><ScanPanel /></div>
 
         {(n > 0 || d.draftsReady > 0 || d.newDiscoveries > 0) && (
         <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-4 border-y border-line py-4">
@@ -52,6 +55,8 @@ export default async function TodayPage() {
         )}
       </header>
 
+      <div className="mb-12"><FunnelChartBig current={d.funnel.current} previous={d.funnel.previous} /></div>
+
       {n > 0 ? (
         <Section
           id="priority"
@@ -66,7 +71,7 @@ export default async function TodayPage() {
         </Section>
       ) : (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          {d.draftsReady > 0 && <Link href="/drafts" className={btn.primary}>Review drafts</Link>}
+          {d.draftsReady > 0 && <Link href="/drafts" className={btn.secondary}>Review drafts</Link>}
           <Link href="/opportunities?view=discoveries" className={btn.secondary}>View discoveries</Link>
           {d.total > 0 && <Link href="/opportunities" className="text-sm font-medium text-accent hover:underline">Browse all {d.total} opportunities →</Link>}
         </div>

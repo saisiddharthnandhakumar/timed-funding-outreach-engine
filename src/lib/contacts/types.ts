@@ -11,7 +11,7 @@
  *  - unverified         : found only in model text, or the domain has no mail server.
  */
 export type VerificationStatus = "publicly_confirmed" | "provider_verified" | "domain_valid_only" | "pattern_guessed" | "unverified";
-export type DiscoverySource = "company_website" | "github" | "web_search" | "pattern" | "manual";
+export type DiscoverySource = "company_website" | "github" | "web_search" | "pattern" | "manual" | "hunter";
 export type ContactKind = "founder" | "company" | "contact_form";
 export type MailboxRole = "general" | "partnerships" | "press" | "support" | "other";
 export type ContactStatus = "pending" | "in_progress" | "completed" | "not_found" | "failed";

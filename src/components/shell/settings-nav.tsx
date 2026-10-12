@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const SECTIONS = [
   { href: "/settings", label: "Investment Thesis" },
-  { href: "/settings/discovery", label: "Discovery" },
+  { href: "/settings/sources", label: "Sources" },
   { href: "/settings/integrations", label: "Integrations" },
   { href: "/settings/system", label: "System" },
 ] as const;

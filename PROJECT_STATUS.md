@@ -46,12 +46,23 @@ Implemented in code, **not yet committed, migrated or deployed**:
 - [x] Password login removed (`proxy.ts`, `/login`, `ADMIN_PASSWORD` gone from code, env example and push script). **The app is now open to anyone with the URL** (cron endpoint still needs `CRON_SECRET`)
 - [ ] Redeploy needed; `ADMIN_PASSWORD` can be deleted from Vercel env vars
 
+## Today funnel, live scan, Hunter, Telegram (2026-10-12) — implemented, NOT yet committed or deployed
+
+- [x] **Today**: 24-hour pipeline funnel chart (`src/components/ui/funnel-chart-big.tsx`, reaviz + framer-motion + react-countup) with comparison to the previous 24 h and a "where the rest dropped out" list; data from `funnelData()` in `src/lib/queries.ts`
+- [x] **Today**: Scan now button; while a scan runs the live pipeline view (`src/components/ui/ai-agent-pipeline.tsx`, driven by the run's real per-stage progress) replaces the idle state, and the page refreshes when the scan ends (`src/components/scan-panel.tsx`)
+- [x] Sidebar search field removed (⌘K and the mobile search icon remain)
+- [x] Settings "Discovery" renamed **Sources**; route is now `/settings/sources` (`/settings/discovery` redirects)
+- [x] **Hunter** Email Finder in contact discovery (`src/lib/contacts/hunter.ts`); migration `20261012000008_hunter_contact_source.sql` (applied to the live DB)
+- [x] **Telegram** alerts (`src/lib/telegram/*`): new startup + draft ready, and a reminder 2 h before the 24 h window closes; `/api/cron/reminders` + `.github/workflows/telegram-reminders.yml`; migration `20261012000009_telegram_once_per_draft.sql` (applied to the live DB)
+- [x] Thesis v4 saved to the live DB: stages + Pre-Series A and Undisclosed (with stage points 10 / 5), sector + Semiconductors & Hardware, minimum fit score 60 → 30. Re-ran: Tessolve Semiconductor (75) and Knocksense (33) now have drafts. Revert via Settings → Investment Thesis when real candidates flow
+- [ ] Add `HUNTER_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `APP_URL` to `.env.local` and Vercel; send `npm run telegram -- --test`
+
 ## UI redesign: scout workflow (2026-10-12) — implemented, NOT yet committed or deployed
 
 Information architecture first, then screen hierarchy, then visual polish. No backend, pipeline, scoring, schema or Gmail/Resend code changed.
 
 - [x] Navigation reduced to **Today · Opportunities · Drafts · Settings** (sidebar on desktop, bottom tab bar below 1024 px)
-- [x] `/today` morning briefing; `/opportunities` (Active + Discoveries, status chips, Filters); `/opportunities/[id]` decision story; `/drafts` + `/drafts/[id]`; `/settings` (Investment Thesis, Discovery, Integrations, System)
+- [x] `/today` morning briefing; `/opportunities` (Active + Discoveries, status chips, Filters); `/opportunities/[id]` decision story; `/drafts` + `/drafts/[id]`; `/settings` (Investment Thesis, Sources, Integrations, System)
 - [x] Old routes redirect (308): `/dashboard`, `/feed`, `/qualified`, `/sources`, `/startups/:id`
 - [x] Always-on one-line system health with a details sheet; ⌘K search; humanised statuses; empty, loading, error and not-found states
 - [x] Send now confirms in a native dialog (To, From, Subject; Cancel focused); Reject and Mark-as-sent also confirm
