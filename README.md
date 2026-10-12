@@ -55,6 +55,10 @@ New sources: insert an `rss`/`sitemap` row into `sources`, or implement `Funding
 
 Funnel order keeps cost low: cheap age/keyword gates run *before* any model call; research runs only for candidates that survived every hard filter.
 
+### Backup AI (OpenRouter, optional)
+
+Runtime AI is Gemini Flash. If `OPENROUTER_API_KEY` is set, requests that Gemini cannot serve (HTTP 429 quota, 500/502/503/504) are retried on OpenRouter, routed to `OPENROUTER_MODEL` (default `google/gemini-3.8-flash`) with OpenRouter's web search for grounded research. After a 429 the primary is skipped for 10 minutes; a bad request or invalid output never triggers the backup. Without the key nothing changes. Code: `src/lib/gemini/fallback.ts`, `openrouter.ts`; wired in `src/lib/ai.ts`. The key is only sent as a bearer header.
+
 ## Database
 
 Migrations live in `supabase/migrations/` (version-controlled): `sources`, `funding_articles`, `startups`, `founders`, `funding_rounds`, `funding_round_sources`, `investors`, `funding_round_investors`, `accelerator_theses`, `scoring_criteria`, `fit_assessments`, `outreach`, `pipeline_runs`, `pipeline_events`, `ai_calls`, `pipeline_lock`. RLS is enabled on all tables with no policies (server-only access via the service-role key).

@@ -48,7 +48,11 @@ export class GeminiService implements AIService {
   private readonly ai: GoogleGenAI;
   readonly modelName: string;
 
-  constructor(private readonly cache?: AICache, opts?: { apiKey?: string; model?: string }) {
+  /** With a backup provider configured, a 429 is thrown at once instead of waiting through the backoff delays. */
+  private readonly failFastOnQuota: boolean;
+
+  constructor(private readonly cache?: AICache, opts?: { apiKey?: string; model?: string; failFastOnQuota?: boolean }) {
+    this.failFastOnQuota = opts?.failFastOnQuota ?? false;
     this.ai = new GoogleGenAI({ apiKey: opts?.apiKey ?? requireEnv("GOOGLE_GENERATIVE_AI_API_KEY") });
     // No silent default: the operator must choose the exact Flash model id.
     this.modelName = opts?.model ?? requireEnv("GEMINI_MODEL");
@@ -137,7 +141,7 @@ export class GeminiService implements AIService {
         return await fn();
       } catch (err) {
         const status = err instanceof ApiError ? err.status : 0;
-        if (!TRANSIENT.has(status) || attempt >= delays.length) throw err;
+        if (!TRANSIENT.has(status) || attempt >= delays.length || (this.failFastOnQuota && status === 429)) throw err;
         const hinted = errorMessage(err).match(/retry in ([\d.]+)s/i);
         await sleep(Math.min(hinted ? Number(hinted[1]) * 1000 + 500 : delays[attempt], 30_000));
       }

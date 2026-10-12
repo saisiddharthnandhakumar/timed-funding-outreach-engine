@@ -12,6 +12,9 @@ const schema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: optional,
   SUPABASE_SERVICE_ROLE_KEY: optional,
   GOOGLE_GENERATIVE_AI_API_KEY: optional,
+  /** Optional backup AI provider, used only when Gemini is out of quota or down. */
+  OPENROUTER_API_KEY: optional,
+  OPENROUTER_MODEL: optional,
   GEMINI_MODEL: optional,
   CRON_SECRET: optional,
   GOOGLE_CLIENT_ID: optional,
