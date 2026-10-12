@@ -10,62 +10,123 @@ const mmss = (ms: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 
+const BLUE = "#0052FF";
+const FLOW_LABEL = "Scan pipeline, step by step: funding news, age and keyword check, Gemini review, filters and de-duplication, research, fit score, contact search, outreach draft";
 /** Steps where Gemini does the work; the rest is plain code. */
 const USES_GEMINI = new Set<StageKey>(["classify", "research", "scoring", "drafts"]);
 
 const WHAT: Record<StageKey, { title: string; idle: string }> = {
-  sources: { title: "Funding news", idle: "Reads every feed" },
-  prefilter: { title: "Age & keywords", idle: "No AI cost" },
-  classify: { title: "Gemini review", idle: "Is it a funding round?" },
-  filters: { title: "Stage, country, repeats", idle: "Your thesis filters" },
-  research: { title: "Research", idle: "Website & web profile" },
-  scoring: { title: "Fit score", idle: "Against your thesis" },
-  contacts: { title: "Contact search", idle: "Founder emails" },
-  drafts: { title: "Outreach draft", idle: "Written for you to review" },
+  sources: { title: "Funding news", idle: "reads every feed" },
+  prefilter: { title: "Age & keywords", idle: "no AI cost" },
+  classify: { title: "Gemini review", idle: "funding or not?" },
+  filters: { title: "Filters & dedupe", idle: "your filters" },
+  research: { title: "Research", idle: "site & web" },
+  scoring: { title: "Fit score", idle: "vs your thesis" },
+  contacts: { title: "Contact search", idle: "founder emails" },
+  drafts: { title: "Outreach draft", idle: "for you to review" },
 };
 
-function Check() {
+const STATUS_COLOR: Record<StageStatus, string> = { done: "#22c55e", running: BLUE, pending: "#52525b", skipped: "#3f6f55", failed: "#ef4444" };
+const STATUS_WORD: Record<StageStatus, string> = { pending: "waiting", running: "in progress", done: "done", skipped: "nothing to do", failed: "failed" };
+
+interface Geometry { w: number; h: number; cols: number; gapX: number; gapY: number; width: number; height: number; font: number }
+/** Wide screens: one row of eight. Narrow screens: a two-column snake so the text stays readable. */
+const WIDE: Geometry = { w: 106, h: 64, cols: 8, gapX: 38, gapY: 0, width: 1128, height: 140, font: 12 };
+const NARROW: Geometry = { w: 150, h: 60, cols: 2, gapX: 40, gapY: 46, width: 352, height: 440, font: 13 };
+
+interface Placed { key: StageKey; x: number; y: number }
+/** Row-major placement; on a snake layout every other row runs right-to-left so each step sits next to the one before it. */
+function place(g: Geometry): Placed[] {
+  return STAGES.map((s, i) => {
+    const row = Math.floor(i / g.cols);
+    const col = i % g.cols;
+    const c = g.cols > 2 || row % 2 === 0 ? col : g.cols - 1 - col;
+    return { key: s.key, x: 4 + c * (g.w + g.gapX), y: 30 + row * (g.h + g.gapY) };
+  });
+}
+
+function connector(a: Placed, b: Placed, g: Geometry): string {
+  if (a.y === b.y) {
+    const right = b.x > a.x;
+    return right ? `M${a.x + g.w + 4},${a.y + g.h / 2} L${b.x - 4},${b.y + g.h / 2}` : `M${a.x - 4},${a.y + g.h / 2} L${b.x + g.w + 4},${b.y + g.h / 2}`;
+  }
+  return `M${a.x + g.w / 2},${a.y + g.h + 20} L${b.x + g.w / 2},${b.y - 4}`;
+}
+
+function AnimatedDot({ path, duration, delay, size, opacity }: { path: string; duration: number; delay: number; size: number; opacity: number }) {
   return (
-    <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 10.5l4 4 8-9" />
-    </svg>
+    <circle r={size} fill={BLUE} opacity={opacity}>
+      <animateMotion dur={`${duration}s`} repeatCount="indefinite" begin={`${delay}s`} path={path} />
+    </circle>
   );
 }
 
-function StatusMark({ status, animate }: { status: StageStatus; animate: boolean }) {
-  if (status === "done") return <span className="grid h-4 w-4 place-items-center rounded-full bg-green-500/20 text-green-400"><Check /></span>;
-  if (status === "failed") return <span className="h-2 w-2 rounded-full bg-red-500" />;
-  if (status === "skipped") return <span className="h-2 w-2 rounded-full bg-white/25" />;
-  if (status === "running") {
-    return animate ? (
-      <motion.span className="h-2 w-2 rounded-full bg-[#3b82f6]" animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1.15, 0.85] }} transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }} />
-    ) : (
-      <span className="h-2 w-2 rounded-full bg-[#3b82f6]" />
-    );
-  }
-  return <span className="h-2 w-2 rounded-full bg-white/15" />;
+function PulsingDot({ cx, cy, delay, animate }: { cx: number; cy: number; delay: number; animate: boolean }) {
+  if (!animate) return <circle cx={cx} cy={cy} r={2.6} fill={BLUE} opacity={0.6} />;
+  return <motion.circle cx={cx} cy={cy} r={2.6} fill={BLUE} animate={{ opacity: [0.15, 1, 0.15] }} transition={{ duration: 1.2, delay, repeat: Infinity, ease: "easeInOut" }} />;
 }
 
-const STATUS_WORD: Record<StageStatus, string> = { pending: "waiting", running: "in progress", done: "done", skipped: "nothing to do", failed: "failed" };
-
-function Step({ index, stage, status, active, animate }: { index: number; stage: StageProgress | undefined; status: StageStatus; active: boolean; animate: boolean }) {
-  const key = STAGES[index].key;
-  const meta = WHAT[key];
-  const count = stage && stage.total > 0 ? `${stage.done}/${stage.total}` : null;
-  const border = active ? "border-[#3b82f6]/80 bg-[#0a1428] shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_0_22px_rgba(59,130,246,0.18)]" : status === "done" ? "border-green-500/25 bg-[#0d130f]" : status === "failed" ? "border-red-500/40 bg-[#160d0d]" : "border-white/[0.07] bg-[#111]";
+function Flow({ g, status, stageOf, current, animate, label }: { g: Geometry; status: (k: StageKey) => StageStatus; stageOf: (k: StageKey) => StageProgress | undefined; current: Set<StageKey>; animate: boolean; label: string }) {
+  const nodes = place(g);
   return (
-    <li aria-current={active ? "step" : undefined} className={`relative flex min-h-[88px] flex-col rounded-[10px] border px-3 py-2.5 transition-colors duration-300 ${border} ${status === "pending" ? "opacity-70" : ""}`}>
-      <span className="sr-only">Step {index + 1}: {STAGES[index].label}, {STATUS_WORD[status]}</span>
-      <div className="flex items-center justify-between" aria-hidden="true">
-        <span className={`font-mono text-[10px] tracking-[0.1em] ${active ? "text-[#6ea1ff]" : "text-white/30"}`}>{String(index + 1).padStart(2, "0")}{USES_GEMINI.has(key) ? " · GEMINI" : ""}</span>
-        <StatusMark status={status} animate={animate} />
-      </div>
-      <div className={`mt-1.5 text-[13px] leading-tight ${active ? "font-medium text-white" : "text-white/80"}`} aria-hidden="true">{meta.title}</div>
-      <div className={`mt-auto pt-1.5 font-mono text-[10px] ${active ? "text-[#6ea1ff]" : "text-white/30"}`} aria-hidden="true">
-        {count ?? (status === "skipped" ? "nothing to do" : meta.idle)}
-      </div>
-      {active && animate && <motion.span aria-hidden="true" className="pointer-events-none absolute inset-x-3 top-0 h-px bg-[#3b82f6]" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }} />}
-    </li>
+    <svg width="100%" viewBox={`0 0 ${g.width} ${g.height}`} className="block" role="img" aria-label={label}>
+      <defs>
+        <marker id={`scan-arrow-${g.cols}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M2 1.5L7.5 5L2 8.5" fill="none" stroke="rgba(0,82,255,0.45)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </marker>
+      </defs>
+
+      {nodes.slice(1).map((n, i) => {
+        const from = nodes[i];
+        const d = connector(from, n, g);
+        const live = current.has(n.key) || status(from.key) === "running";
+        const done = status(from.key) === "done" || status(from.key) === "skipped";
+        return (
+          <g key={`c-${n.key}`}>
+            <path d={d} fill="none" stroke={live ? "rgba(0,82,255,0.4)" : done ? "rgba(34,197,94,0.28)" : "rgba(0,82,255,0.14)"} strokeWidth="1.5" strokeDasharray="3 5" markerEnd={`url(#scan-arrow-${g.cols})`} />
+            {animate && live && (
+              <>
+                <AnimatedDot path={d} duration={1.1} delay={0} size={2.4} opacity={1} />
+                <AnimatedDot path={d} duration={1.1} delay={0.37} size={1.8} opacity={0.65} />
+                <AnimatedDot path={d} duration={1.1} delay={0.74} size={1.3} opacity={0.35} />
+              </>
+            )}
+          </g>
+        );
+      })}
+
+      {nodes.map((n, i) => {
+        const st = status(n.key);
+        const active = current.has(n.key);
+        const stage = stageOf(n.key);
+        const gem = USES_GEMINI.has(n.key);
+        const cx = n.x + g.w / 2;
+        const caption = stage && stage.total > 0 ? `${stage.done}/${stage.total}` : st === "skipped" ? "nothing to do" : WHAT[n.key].idle;
+        const fill = active || gem ? "#050D1C" : st === "done" ? "#0d130f" : "#141414";
+        const stroke = active ? BLUE : st === "failed" ? "#ef4444" : st === "done" ? "rgba(34,197,94,0.35)" : gem ? "rgba(0,82,255,0.35)" : "rgba(255,255,255,0.09)";
+        return (
+          <g key={n.key} opacity={st === "pending" && !active ? 0.78 : 1}>
+            <title>{`Step ${i + 1}: ${STAGES[i].label}, ${STATUS_WORD[st]}`}</title>
+            <rect x={n.x} y={n.y} width={g.w} height={g.h} rx="10" fill={fill} stroke={stroke} strokeWidth={active ? 1.3 : 0.8} />
+            {active && <rect x={n.x + 14} y={n.y + 0.5} width={g.w - 28} height="1.2" rx="0.6" fill="rgba(51,117,255,0.7)" />}
+            <text x={cx} y={n.y + 19} textAnchor="middle" fontSize="9.5" letterSpacing=".07em" fill={active || gem ? "rgba(51,117,255,0.75)" : "rgba(255,255,255,0.3)"}>
+              {String(i + 1).padStart(2, "0")}{gem ? " · GEMINI" : ""}
+            </text>
+            <text x={cx} y={n.y + 40} textAnchor="middle" fontSize={g.font} fill={active ? "#fff" : "rgba(255,255,255,0.82)"} fontWeight={active ? 500 : 400}>{WHAT[n.key].title}</text>
+            {active ? (
+              <>
+                <PulsingDot cx={cx - 10} cy={n.y + g.h - 9} delay={0} animate={animate} />
+                <PulsingDot cx={cx} cy={n.y + g.h - 9} delay={0.4} animate={animate} />
+                <PulsingDot cx={cx + 10} cy={n.y + g.h - 9} delay={0.8} animate={animate} />
+              </>
+            ) : (
+              <circle cx={n.x + g.w - 12} cy={n.y + 12} r={3} fill={STATUS_COLOR[st]} opacity={st === "pending" ? 0.7 : 0.95} />
+            )}
+            <text x={cx} y={n.y + g.h + 16} textAnchor="middle" fontSize="9.5" fontFamily="monospace" fill={active ? "rgba(0,82,255,0.75)" : "rgba(255,255,255,0.3)"}>{caption}</text>
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
@@ -106,11 +167,10 @@ export default function EnterpriseAIPipeline({ run, starting = false }: { run: R
         <span className="font-mono text-[10px] text-white/[0.28]">{run?.status === "running" ? `${mmss(elapsed)} elapsed` : "starting"}</span>
       </div>
 
-      <ol aria-label="Scan pipeline" className="grid grid-cols-2 gap-2.5 p-3.5 sm:grid-cols-4">
-        {STAGES.map((s, i) => (
-          <Step key={s.key} index={i} stage={by(s.key)} status={statusOf(s.key)} active={current.has(s.key)} animate={animate} />
-        ))}
-      </ol>
+      <div className="px-3 py-2 sm:px-5">
+        <div className="hidden sm:block"><Flow g={WIDE} status={statusOf} stageOf={by} current={current} animate={animate} label={FLOW_LABEL} /></div>
+        <div className="sm:hidden"><Flow g={NARROW} status={statusOf} stageOf={by} current={current} animate={animate} label={FLOW_LABEL} /></div>
+      </div>
 
       <div className="h-[52px] border-t border-white/[0.06] px-[18px] py-[9px]">
         <div className="flex h-full items-start gap-2">

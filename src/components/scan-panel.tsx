@@ -68,7 +68,7 @@ export function ScanPanel() {
         </span>
       </div>
       {live && (
-        <div className="mt-5 max-w-2xl">
+        <div className="mt-5 w-full">
           <EnterpriseAIPipeline run={running ? run : null} starting={waitingForRun} />
         </div>
       )}
