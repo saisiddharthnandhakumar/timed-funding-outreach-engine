@@ -130,6 +130,10 @@ Open **Settings → Investment Thesis**. The essentials are up front: the natura
 - **Events:** startup identity = domain → normalised company name; round identity = startup + stage + date window (21 days) with an amount sanity check. Extra reports attach as `funding_round_sources`, preserving each source's `source_published_at` / `first_seen_at` for speed metrics.
 - **Outreach:** a startup with any live outreach (generated, draft created, approved, sent) is rejected as `already_contacted`; additionally enforced by a partial unique index in Postgres.
 
+## Finding the company website (research + contact search)
+
+The contact crawl needs the startup's official site. In order: a link in the funding article → Gemini's search-grounded lookup (when quota allows) → a **deterministic resolver that needs no AI quota** (`src/lib/research/website.ts`): guess domains from the company name (`.com`, `.in`, `.co.in`, `.ai`, …, with and without `www`), keep those that exist in DNS, accept only homepages that name the company, and pick the most substantial match so a one-line placeholder can't win. Contact search runs the same resolver as a backstop if a startup still has no website, saves it, and then crawls the homepage plus contact, about and team pages. Approved-but-unsent drafts with no recipient are also filled from the preferred contact (never overwriting an address that is already set).
+
 ## Founder contact discovery
 
 After a startup qualifies (and before its draft is created) the pipeline looks for **publicly published** professional email addresses, founders first. It uses free sources only and needs no API key. Implemented in TypeScript (`src/lib/contacts/`) inside the existing Vercel/GitHub Actions flow; there is no separate worker.

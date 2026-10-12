@@ -15,6 +15,7 @@ import { classifyArticle } from "@/lib/gemini/tasks";
 import type { Classification } from "@/lib/gemini/schemas";
 import { SupabaseDedupeRepository } from "@/lib/deduplication/supabase-repo";
 import { resolveStartupAndRound } from "@/lib/deduplication/resolve";
+import { resolveWebsiteUrl } from "@/lib/research/website";
 import { PipelineLogger } from "./logger";
 import { applyInvestorEvidence, linkInvestors } from "./run";
 import { InvestorEnricher, entriesToDocs } from "@/lib/investors/enrich";
@@ -56,7 +57,7 @@ export async function overrideFilteredRound(roundId: string): Promise<OverrideRe
 
     await db().from("funding_rounds").update({ status: "enriching", last_error: null }).eq("id", roundId);
     const entries = await new InvestorEnricher({ log }).gather({ name: startup.name, domain: startup.website ? new URL(startup.website).hostname.replace(/^www\./, "") : null }).catch(() => []);
-    const research = await researchStartup(ai, { companyName: startup.name, hqCountry: startup.hq_country, articles: docs, website: startup.website, extraDocs: entriesToDocs(entries) }, log, startup.id);
+    const research = await researchStartup(ai, { companyName: startup.name, hqCountry: startup.hq_country, articles: docs, website: startup.website, extraDocs: entriesToDocs(entries), resolveWebsite: resolveWebsiteUrl }, log, startup.id);
     if (entries.length) await applyInvestorEvidence(log, startup.id, roundId, research, entries);
     await persistEnrichment(startup.id, research, log);
 

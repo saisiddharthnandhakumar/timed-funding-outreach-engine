@@ -24,6 +24,8 @@ export interface ContactStore {
   updateStartup(startupId: string, patch: { status: ContactStatus; checkedAt: string; error: string | null }): Promise<void>;
   /** Fill recipient on still-editable drafts that have none. Returns rows updated. */
   applyRecipientToOpenDrafts(startupId: string, name: string | null, email: string): Promise<number>;
+  /** Remember a website found during contact search (only when none is stored). */
+  saveWebsite?(startupId: string, website: string): Promise<void>;
 }
 
 export interface ContactDeps {
@@ -36,6 +38,8 @@ export interface ContactDeps {
   verifier: EmailVerifier | null;
   /** Hunter Email Finder: asks for a specific founder's work address. Optional; budgeted per month. */
   finder?: FounderEmailFinder | null;
+  /** Backstop when the startup has no website: find it from the company name (no AI quota). */
+  resolveWebsite?: (companyName: string) => Promise<string | null>;
   budget: Budget;
   config: { maxPages: number; reenrichDays: number; verifierMonthlyLimit: number; maxVerificationsPerCompany: number; /** monthly Email Finder lookups (Hunter free plan is small) */ finderMonthlyLimit?: number; /** politeness delay between requests to one host (default 300 ms) */ crawlDelayMs?: number };
   now?: () => Date;
@@ -82,6 +86,19 @@ export async function enrichStartupContacts(deps: ContactDeps, startupId: string
   try {
     await deps.store.updateStartup(startupId, { status: "in_progress", checkedAt: nowIso, error: null });
     const founders = await deps.store.loadFounders(startupId);
+    if (!startup.website && deps.resolveWebsite) {
+      try {
+        const found = await deps.resolveWebsite(startup.name);
+        if (found) {
+          startup.website = found;
+          startup.domain = startup.domain ?? domainFromUrl(found);
+          await deps.store.saveWebsite?.(startupId, found);
+          await deps.log?.("website_resolved", `${startup.name}: official website found at ${found}`, { website: found });
+        }
+      } catch (err) {
+        warnings.push(`website lookup: ${errorMessage(err)}`);
+      }
+    }
     const domain = startup.domain ?? domainFromUrl(startup.website);
     const existing = await deps.store.loadContacts(startupId);
     const found: ContactCandidate[] = [];

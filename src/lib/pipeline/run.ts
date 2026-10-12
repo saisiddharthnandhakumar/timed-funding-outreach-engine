@@ -40,6 +40,8 @@ export interface PipelineDeps {
   enrichContacts?: (startupId: string) => Promise<ContactOutcome | null>;
   /** Investor portfolio lookup that adds first-party evidence to research. Off unless supplied (production wiring passes it). */
   investorLookup?: InvestorLookup;
+  /** Finds a startup's website when the article and search didn't (no AI quota). Off unless supplied (production wiring passes it). */
+  resolveWebsite?: (companyName: string) => Promise<string | null>;
 }
 
 export interface RunOptions {
@@ -551,7 +553,7 @@ async function evaluateRound(ctx: Ctx, roundId: string): Promise<RoundEval> {
       const entries = ctx.deps.investorLookup ? await ctx.deps.investorLookup.gather({ name: startup.name, domain: domainFromUrl(startup.website) }).catch(() => []) : [];
       const r = await researchStartup(
         ctx.deps.ai,
-        { companyName: startup.name, hqCountry: startup.hq_country, articles: docs, website: startup.website, extraDocs: entriesToDocs(entries) },
+        { companyName: startup.name, hqCountry: startup.hq_country, articles: docs, website: startup.website, extraDocs: entriesToDocs(entries), resolveWebsite: ctx.deps.resolveWebsite },
         ctx.log,
         startup.id,
       );

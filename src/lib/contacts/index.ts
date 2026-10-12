@@ -11,6 +11,7 @@ import { GroundedWebSearch } from "./search";
 import { SupabaseContactStore } from "./storage";
 import { HunterFinder } from "./hunter";
 import { HunterVerifier, MxChecker } from "./verify";
+import { resolveWebsiteUrl } from "@/lib/research/website";
 import { OUTREACH_SAFE, type VerificationStatus } from "./types";
 
 export type { ContactOutcome } from "./pipeline";
@@ -29,6 +30,7 @@ export function createContactDeps(ai: AIService, log?: PipelineLogger): ContactD
     search: new GroundedWebSearch(ai, defaultFetcher, robots, budget, { monthlyLimit: e.CONTACT_SEARCH_MONTHLY_BUDGET, maxPages: 4 }),
     verifier: e.HUNTER_API_KEY ? new HunterVerifier(e.HUNTER_API_KEY) : null,
     finder: e.HUNTER_API_KEY ? new HunterFinder(e.HUNTER_API_KEY) : null,
+    resolveWebsite: resolveWebsiteUrl,
     budget,
     config: { maxPages: e.CONTACT_MAX_PAGES, reenrichDays: e.CONTACT_REENRICH_DAYS, verifierMonthlyLimit: e.CONTACT_VERIFIER_MONTHLY_BUDGET, maxVerificationsPerCompany: 3, finderMonthlyLimit: e.CONTACT_HUNTER_FINDER_MONTHLY_BUDGET },
     log: log ? (type, message, meta) => log.event("startup", null, type, message, meta) : undefined,

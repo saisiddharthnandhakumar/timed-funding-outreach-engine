@@ -19,6 +19,8 @@ export interface ResearchContext {
   website: string | null;
   /** Extra evidence documents (e.g. investor portfolio pages) offered to synthesis after the company's own site. */
   extraDocs?: ResearchDoc[];
+  /** Last-resort website discovery (no AI quota needed). Off unless supplied. */
+  resolveWebsite?: (companyName: string) => Promise<string | null>;
 }
 
 const NON_COMPANY_DOMAINS = [
@@ -152,6 +154,15 @@ export async function researchStartup(ai: AIService, ctx: ResearchContext, log?:
         website = `https://${host}/`;
         break;
       }
+    }
+  }
+
+  if (!website && ctx.resolveWebsite) {
+    try {
+      website = await ctx.resolveWebsite(ctx.companyName);
+      if (website) await log?.event("startup", entityId ?? null, "website_resolved", `${ctx.companyName}: official website found at ${website}`, { website });
+    } catch (err) {
+      warnings.push(`website lookup failed: ${errorMessage(err)}`);
     }
   }
 

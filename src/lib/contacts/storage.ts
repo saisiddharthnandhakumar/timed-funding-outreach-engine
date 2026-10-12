@@ -1,3 +1,4 @@
+import { domainFromUrl } from "@/lib/util/text";
 import { db, unwrap } from "@/lib/supabase/admin";
 import type { ContactStore } from "./pipeline";
 import { contactKey, type ContactStatus, type FounderRef, type StartupRef, type StoredContact } from "./types";
@@ -27,6 +28,14 @@ const toStored = (r: Row): StoredContact => ({
 });
 
 export class SupabaseContactStore implements ContactStore {
+  async saveWebsite(startupId: string, website: string): Promise<void> {
+    const domain = domainFromUrl(website);
+    // Only fill a missing website; a domain already owned by another startup is saved without the domain (same as research does).
+    let res = await db().from("startups").update({ website, domain }).eq("id", startupId).is("website", null);
+    if (res.error?.code === "23505") res = await db().from("startups").update({ website }).eq("id", startupId).is("website", null);
+    if (res.error) throw new Error(`save website: ${res.error.message}`);
+  }
+
   async loadStartup(id: string): Promise<StartupRef | null> {
     const r = unwrap(await db().from("startups").select("id,name,website,domain,contact_status,contact_checked_at").eq("id", id).maybeSingle(), "load startup") as
       | { id: string; name: string; website: string | null; domain: string | null; contact_status: ContactStatus; contact_checked_at: string | null }
@@ -75,7 +84,7 @@ export class SupabaseContactStore implements ContactStore {
   async applyRecipientToOpenDrafts(startupId: string, name: string | null, email: string): Promise<number> {
     const update: Record<string, string> = { recipient_email: email };
     if (name) update.recipient_name = name;
-    const res = await db().from("outreach").update(update).eq("startup_id", startupId).is("recipient_email", null).in("status", ["generated", "draft_created"]).select("id");
+    const res = await db().from("outreach").update(update).eq("startup_id", startupId).is("recipient_email", null).in("status", ["generated", "draft_created", "approved"]).select("id");
     if (res.error) throw new Error(`prefill drafts: ${res.error.message}`);
     return res.data?.length ?? 0;
   }
