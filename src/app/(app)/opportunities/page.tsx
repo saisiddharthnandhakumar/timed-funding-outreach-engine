@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { opportunitiesData, discoveriesData, configured } from "@/lib/queries";
+import { opportunitiesData, discoveriesData, droppedData, configured } from "@/lib/queries";
+import { DROP_KINDS, RANGES, parseRange, parseWhy, type DropKey, type RangeKey } from "@/lib/ranges";
 import { PageHeader, SetupNotice, StatusChip, Tag, TextLink, btn, type Tone } from "@/components/ui";
 import { EmptyState } from "@/components/empty-state";
 import { OpportunityRow } from "@/components/opportunity/opportunity-card";
@@ -56,7 +57,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
         subtitle={view === "active" ? "Startups that meet your thesis, best fit first." : "Funding announcements the scan found, including ones that didn’t make your thesis."}
       />
       <ViewTabs view={view} />
-      {view === "active" ? <ActiveView params={params} /> : <DiscoveriesView params={params} />}
+      {view === "active" ? <ActiveView params={params} /> : parseWhy(params.why) ? <DroppedView why={parseWhy(params.why)!} range={parseRange(params.range)} /> : <DiscoveriesView params={params} />}
     </>
   );
 }
@@ -107,6 +108,59 @@ async function ActiveView({ params }: { params: Params }) {
         <EmptyState title="Nothing matches these filters" action={<Link href="/opportunities" className={btn.secondary}>Clear all filters</Link>}>
           <p>Try removing a filter to see more of the {all.length} qualified startups.</p>
         </EmptyState>
+      )}
+    </>
+  );
+}
+
+function FilteredRoundRow({ r, now }: { r: any; now: Date }) {
+  return (
+    <li className="flex flex-wrap items-start justify-between gap-x-6 gap-y-1 py-3">
+      <div className="min-w-0">
+        <TextLink href={`/opportunities/${r.startups.id}`}>{r.startups.name}</TextLink>
+        <p className="mt-0.5 text-sm text-muted">{[r.stage && r.stage !== "unknown" ? stageLabel(r.stage) : null, r.amount != null ? formatAmount(r.amount, r.currency) : null, r.score != null ? `Fit ${r.score}` : null, ago(r.earliest_source_published_at, now)].filter(Boolean).join(" · ")}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Tag>{rejectionLabel(r.rejection_reason) ?? "Filtered"}</Tag>
+        {r.rejection_reason !== "already_contacted" && <OverrideButton kind="round" id={r.id} />}
+      </div>
+    </li>
+  );
+}
+
+function FilteredArticleRow({ a, now }: { a: any; now: Date }) {
+  return (
+    <li className="flex flex-wrap items-start justify-between gap-x-6 gap-y-1 py-3">
+      <div className="min-w-0 max-w-xl">
+        <TextLink href={a.source_url} external>{a.headline}</TextLink>
+        <p className="mt-0.5 text-xs text-faint" title={formatDateTime(a.source_published_at)}>{a.sources?.name} · {ago(a.source_published_at ?? a.first_seen_at, now)}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Tag>{rejectionLabel(a.rejection_reason) ?? articleStatusLabel(a.processing_status)}</Tag>
+        <OverrideButton kind="article" id={a.id} />
+      </div>
+    </li>
+  );
+}
+
+/** The list behind one "where the rest dropped out" count on Today: same window, same rule as the number. */
+async function DroppedView({ why, range }: { why: DropKey; range: RangeKey }) {
+  const { rounds, articles } = await droppedData(why, range);
+  const now = new Date();
+  const total = rounds.length + articles.length;
+  const window = RANGES.find((r) => r.key === range)!;
+  return (
+    <>
+      <p className="mb-4 text-sm"><Link href={range === "24h" ? "/today" : `/today?range=${range}`} className="text-muted hover:text-ink hover:underline">← Today</Link></p>
+      <h2 className="text-base font-semibold text-ink">{DROP_KINDS[why].label}</h2>
+      <p className="mb-4 mt-0.5 text-sm text-faint">{plural(total, "item")} in the last {window.label}, newest first. Pursue any you want to follow up anyway.</p>
+      {total === 0 ? (
+        <p className="text-sm text-muted">Nothing in this group for the last {window.label}.</p>
+      ) : (
+        <ul className="divide-y divide-line">
+          {rounds.map((r) => <FilteredRoundRow key={r.id} r={r} now={now} />)}
+          {articles.map((a) => <FilteredArticleRow key={a.id} a={a} now={now} />)}
+        </ul>
       )}
     </>
   );
@@ -167,30 +221,8 @@ async function DiscoveriesView({ params }: { params: Params }) {
             <p className="text-sm text-muted">Nothing has been filtered yet.</p>
           ) : (
             <ul className="divide-y divide-line">
-              {rejectedRounds.map((r) => (
-                <li key={r.id} className="flex flex-wrap items-start justify-between gap-x-6 gap-y-1 py-3">
-                  <div className="min-w-0">
-                    <TextLink href={`/opportunities/${r.startups.id}`}>{r.startups.name}</TextLink>
-                    <p className="mt-0.5 text-sm text-muted">{[r.stage && r.stage !== "unknown" ? stageLabel(r.stage) : null, r.amount != null ? formatAmount(r.amount, r.currency) : null, ago(r.earliest_source_published_at, now)].filter(Boolean).join(" · ")}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Tag>{rejectionLabel(r.rejection_reason) ?? "Filtered"}</Tag>
-                    {r.rejection_reason !== "already_contacted" && <OverrideButton kind="round" id={r.id} />}
-                  </div>
-                </li>
-              ))}
-              {filtered.map((a) => (
-                <li key={a.id} className="flex flex-wrap items-start justify-between gap-x-6 gap-y-1 py-3">
-                  <div className="min-w-0 max-w-xl">
-                    <TextLink href={a.source_url} external>{a.headline}</TextLink>
-                    <p className="mt-0.5 text-xs text-faint" title={formatDateTime(a.source_published_at)}>{a.sources?.name} · {ago(a.source_published_at ?? a.first_seen_at, now)}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Tag>{rejectionLabel(a.rejection_reason) ?? articleStatusLabel(a.processing_status)}</Tag>
-                    <OverrideButton kind="article" id={a.id} />
-                  </div>
-                </li>
-              ))}
+              {rejectedRounds.map((r) => <FilteredRoundRow key={r.id} r={r} now={now} />)}
+              {filtered.map((a) => <FilteredArticleRow key={a.id} a={a} now={now} />)}
             </ul>
           )}
         </section>

@@ -11,3 +11,20 @@ export function parseRange(v: string | string[] | undefined): RangeKey {
   const k = Array.isArray(v) ? v[0] : v;
   return RANGES.find((r) => r.key === k)?.key ?? "24h";
 }
+
+/** The "where the rest dropped out" buckets on Today. Each opens the matching list under Opportunities → Discoveries. */
+export const DROP_KINDS = {
+  notFunding: { why: "not-funding", label: "Not funding news", reasons: ["not_funding_announcement"] },
+  tooOld: { why: "too-old", label: "Older than the time window", reasons: ["announcement_too_old"] },
+  outsideThesis: { why: "outside-thesis", label: "Outside your stage or country", reasons: ["wrong_stage", "wrong_geography"] },
+  belowScore: { why: "below-score", label: "Below the minimum fit score", reasons: ["below_threshold"] },
+} as const;
+export type DropKey = keyof typeof DROP_KINDS;
+
+export function parseWhy(v: string | string[] | undefined): DropKey | null {
+  const w = Array.isArray(v) ? v[0] : v;
+  return (Object.keys(DROP_KINDS) as DropKey[]).find((k) => DROP_KINDS[k].why === w) ?? null;
+}
+
+/** Where a "dropped out" row goes: the filtered list for that bucket and time window. */
+export const dropHref = (key: DropKey, range: RangeKey) => `/opportunities?view=discoveries&why=${DROP_KINDS[key].why}${range === "24h" ? "" : `&range=${range}`}`;

@@ -1,5 +1,5 @@
 import { db, unwrap } from "@/lib/supabase/admin";
-import { RANGES, type RangeKey } from "@/lib/ranges";
+import { DROP_KINDS, RANGES, type DropKey, type RangeKey } from "@/lib/ranges";
 import { hasSupabaseEnv } from "@/lib/env";
 import { hoursDelay, median } from "@/lib/format";
 import { computePipelineHealth, describeHealth, SCHEDULE, type RunLike } from "@/lib/pipeline/health";
@@ -174,6 +174,36 @@ export async function todayData(range: RangeKey = "24h") {
   ]);
   const attention = opportunities.filter((o) => needsAttention(o));
   return { attention, total: opportunities.length, health, newDiscoveries, draftsReady: health.draftsReady, funnel };
+}
+
+/** The items behind one "dropped out" count on Today: same window, same rule as the number. */
+export async function droppedData(key: DropKey, range: RangeKey) {
+  const from = new Date(Date.now() - RANGES.find((r) => r.key === range)!.hours * 3_600_000).toISOString();
+  const to = new Date(Date.now() + 60_000).toISOString();
+  if (key === "belowScore") {
+    // The count is assessments that missed the threshold, so the list is the same assessments, shown as rounds.
+    const rows = unwrap(
+      await db()
+        .from("fit_assessments")
+        .select("funding_round_id,total_score,startups(id,name,sector),funding_rounds(stage,amount,currency,earliest_source_published_at)")
+        .gte("assessed_at", from).lt("assessed_at", to).eq("qualified", false)
+        .order("assessed_at", { ascending: false }).limit(200),
+      "below-score assessments",
+    ) as any[];
+    const seen = new Set<string>();
+    const rounds = rows.filter((a) => a.startups && !seen.has(a.funding_round_id) && seen.add(a.funding_round_id)).map((a) => ({ id: a.funding_round_id, startups: a.startups, rejection_reason: "below_threshold", score: a.total_score, ...(a.funding_rounds ?? {}) }));
+    return { rounds, articles: [] as any[] };
+  }
+  const articles = unwrap(
+    await db()
+      .from("funding_articles")
+      .select("id,headline,source_url,source_published_at,first_seen_at,processing_status,rejection_reason,sources(name)")
+      .gte("first_seen_at", from).lt("first_seen_at", to)
+      .in("rejection_reason", [...DROP_KINDS[key].reasons])
+      .order("first_seen_at", { ascending: false }).limit(300),
+    "dropped articles",
+  ) as any[];
+  return { rounds: [] as any[], articles };
 }
 
 // ───────────────────────────── discoveries ─────────────────────────────

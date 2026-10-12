@@ -6,7 +6,8 @@ import { motion } from "framer-motion";
 import CountUp from "react-countup";
 import { FunnelAxis, FunnelAxisLabel, FunnelAxisLine, FunnelArc, FunnelChart, FunnelSeries } from "reaviz";
 import type { FunnelCounts } from "@/lib/queries";
-import { RANGES, type RangeKey } from "@/lib/ranges";
+import Link from "next/link";
+import { DROP_KINDS, RANGES, dropHref, type DropKey, type RangeKey } from "@/lib/ranges";
 
 /** reaviz paints SVG with literal colours, so the two themes are mirrored here from the CSS tokens in globals.css. */
 const COLORS = {
@@ -60,11 +61,11 @@ function Headline({ label, now, before, previous }: { label: string; now: number
   );
 }
 
-const DROPS: { key: keyof FunnelCounts["dropped"]; label: string; icon: ReactNode }[] = [
-  { key: "notFunding", label: "Not funding news", icon: <path d="M5 4h10v12H5zM8 8h4M8 11h4" /> },
-  { key: "tooOld", label: "Older than the time window", icon: <><circle cx="10" cy="10" r="7" /><path d="M10 6v4l2.5 2" /></> },
-  { key: "outsideThesis", label: "Outside your stage or country", icon: <path d="M3 5h14l-5 6v5l-4-2v-3z" /> },
-  { key: "belowScore", label: "Below the minimum fit score", icon: <path d="M3 15l5-5 3 3 6-7M13 6h4v4" /> },
+const DROPS: { key: DropKey; label: string; icon: ReactNode }[] = [
+  { key: "notFunding", label: DROP_KINDS.notFunding.label, icon: <path d="M5 4h10v12H5zM8 8h4M8 11h4" /> },
+  { key: "tooOld", label: DROP_KINDS.tooOld.label, icon: <><circle cx="10" cy="10" r="7" /><path d="M10 6v4l2.5 2" /></> },
+  { key: "outsideThesis", label: DROP_KINDS.outsideThesis.label, icon: <path d="M3 5h14l-5 6v5l-4-2v-3z" /> },
+  { key: "belowScore", label: DROP_KINDS.belowScore.label, icon: <path d="M3 15l5-5 3 3 6-7M13 6h4v4" /> },
 ];
 
 function RangeTabs({ range, onPick, busy }: { range: RangeKey; onPick: (k: RangeKey) => void; busy: boolean }) {
@@ -158,18 +159,18 @@ export default function FunnelChartBig({ range, current, previous }: { range: Ra
         <h3 className="border-t border-line pb-1 pt-4 text-sm font-medium text-ink">Where the rest dropped out</h3>
         <ul className="divide-y divide-line">
           {DROPS.map((d, i) => (
-            <motion.li
-              key={d.key}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="flex items-center justify-between gap-3 py-3 text-sm"
-            >
-              <span className="flex min-w-0 items-center gap-2 text-muted">
-                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-faint" aria-hidden="true">{d.icon}</svg>
-                <span className="truncate">{d.label}</span>
-              </span>
-              <span className="num font-semibold text-ink">{current.dropped[d.key]}</span>
+            <motion.li key={d.key} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              <Link href={dropHref(d.key, range)} className="group -mx-3 flex items-center justify-between gap-3 rounded-lg px-3 py-3 text-sm hover:bg-sunken">
+                <span className="flex min-w-0 items-center gap-2 text-muted group-hover:text-ink">
+                  <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-faint" aria-hidden="true">{d.icon}</svg>
+                  <span className="truncate">{d.label}</span>
+                  <span className="sr-only">: see the {current.dropped[d.key]}</span>
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="num font-semibold text-ink">{current.dropped[d.key]}</span>
+                  <span aria-hidden="true" className="text-faint transition-transform group-hover:translate-x-0.5 group-hover:text-ink">→</span>
+                </span>
+              </Link>
             </motion.li>
           ))}
         </ul>
