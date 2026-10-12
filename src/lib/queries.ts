@@ -1,4 +1,5 @@
 import { db, unwrap } from "@/lib/supabase/admin";
+import { RANGES, type RangeKey } from "@/lib/ranges";
 import { hasSupabaseEnv } from "@/lib/env";
 import { hoursDelay, median } from "@/lib/format";
 import { computePipelineHealth, describeHealth, SCHEDULE, type RunLike } from "@/lib/pipeline/health";
@@ -152,23 +153,24 @@ async function funnelCounts(from: string, to: string): Promise<FunnelCounts> {
   };
 }
 
-/** The last 24 hours of the funnel, plus the 24 hours before that for comparison. */
-export async function funnelData() {
+/** The chosen window of the funnel, plus the window of the same length right before it for comparison. */
+export async function funnelData(range: RangeKey = "24h") {
+  const ms = RANGES.find((r) => r.key === range)!.hours * 3_600_000;
   const now = Date.now();
-  const iso = (ms: number) => new Date(ms).toISOString();
+  const iso = (t: number) => new Date(t).toISOString();
   const [current, previous] = await Promise.all([
-    funnelCounts(iso(now - 24 * 3_600_000), iso(now + 60_000)),
-    funnelCounts(iso(now - 48 * 3_600_000), iso(now - 24 * 3_600_000)),
+    funnelCounts(iso(now - ms), iso(now + 60_000)),
+    funnelCounts(iso(now - 2 * ms), iso(now - ms)),
   ]);
   return { current, previous };
 }
 
-export async function todayData() {
+export async function todayData(range: RangeKey = "24h") {
   const [opportunities, health, newDiscoveries, funnel] = await Promise.all([
     opportunitiesData(),
     healthSnapshot(),
     count("funding_rounds", (q) => q.gte("created_at", since24h()).neq("status", "rejected")),
-    funnelData(),
+    funnelData(range),
   ]);
   const attention = opportunities.filter((o) => needsAttention(o));
   return { attention, total: opportunities.length, health, newDiscoveries, draftsReady: health.draftsReady, funnel };

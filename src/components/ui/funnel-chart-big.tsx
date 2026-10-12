@@ -1,10 +1,12 @@
 "use client";
 
-import { useSyncExternalStore, type ReactNode } from "react";
+import { useSyncExternalStore, useTransition, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import CountUp from "react-countup";
 import { FunnelAxis, FunnelAxisLabel, FunnelAxisLine, FunnelArc, FunnelChart, FunnelSeries } from "reaviz";
 import type { FunnelCounts } from "@/lib/queries";
+import { RANGES, type RangeKey } from "@/lib/ranges";
 
 /** reaviz paints SVG with literal colours, so the two themes are mirrored here from the CSS tokens in globals.css. */
 const COLORS = {
@@ -30,8 +32,8 @@ const Arrow = ({ up }: { up: boolean }) => (
   </svg>
 );
 
-/** "+12%" / "−4%" against the previous 24 hours; "new" when there was nothing to compare with; null when both are zero. */
-function Delta({ now, before }: { now: number; before: number }) {
+/** "+12%" / "−4%" against the previous window of the same length; "new" when there was nothing to compare with; null when both are zero. */
+function Delta({ now, before, previous }: { now: number; before: number; previous: string }) {
   if (now === 0 && before === 0) return null;
   if (before === 0) return <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">New</span>;
   const pct = Math.round(((now - before) / before) * 100);
@@ -40,20 +42,20 @@ function Delta({ now, before }: { now: number; before: number }) {
   return (
     <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-1 text-xs font-medium ${up ? "bg-ok-soft text-ok" : "bg-sunken text-muted"}`}>
       <Arrow up={up} />
-      {Math.abs(pct)}%<span className="sr-only"> {up ? "more" : "fewer"} than the previous 24 hours</span>
+      {Math.abs(pct)}%<span className="sr-only"> {up ? "more" : "fewer"} than {previous}</span>
     </span>
   );
 }
 
-function Headline({ label, now, before }: { label: string; now: number; before: number }) {
+function Headline({ label, now, before, previous }: { label: string; now: number; before: number; previous: string }) {
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-sm text-muted">{label}</span>
       <div className="flex flex-wrap items-center gap-2">
         <CountUp className="num text-3xl font-semibold text-ink" start={0} end={now} duration={1.6} preserveValue />
-        <Delta now={now} before={before} />
+        <Delta now={now} before={before} previous={previous} />
       </div>
-      <span className="text-xs text-faint">{before === 0 ? "None in the 24 hours before" : `Compared to ${before} in the 24 hours before`}</span>
+      <span className="text-xs text-faint">{before === 0 ? `None in ${previous}` : `Compared to ${before} in ${previous}`}</span>
     </div>
   );
 }
@@ -65,7 +67,30 @@ const DROPS: { key: keyof FunnelCounts["dropped"]; label: string; icon: ReactNod
   { key: "belowScore", label: "Below the minimum fit score", icon: <path d="M3 15l5-5 3 3 6-7M13 6h4v4" /> },
 ];
 
-export default function FunnelChartBig({ current, previous }: { current: FunnelCounts; previous: FunnelCounts }) {
+function RangeTabs({ range, onPick, busy }: { range: RangeKey; onPick: (k: RangeKey) => void; busy: boolean }) {
+  return (
+    <div role="group" aria-label="Time period" aria-busy={busy} className="inline-flex rounded-full bg-sunken p-0.5">
+      {RANGES.map((r) => (
+        <button
+          key={r.key}
+          type="button"
+          aria-pressed={range === r.key}
+          onClick={() => onPick(r.key)}
+          className={`min-h-8 rounded-full px-3 text-sm font-medium transition-colors ${range === r.key ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}
+        >
+          {r.short}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function FunnelChartBig({ range, current, previous }: { range: RangeKey; current: FunnelCounts; previous: FunnelCounts }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [pending, startTransition] = useTransition();
+  const pick = (k: RangeKey) => startTransition(() => router.replace(k === "24h" ? pathname : `${pathname}?range=${k}`, { scroll: false }));
+  const meta = RANGES.find((r) => r.key === range)!;
   const dark = useIsDark();
   const colors = dark ? COLORS.dark : COLORS.light;
 
@@ -81,14 +106,16 @@ export default function FunnelChartBig({ current, previous }: { current: FunnelC
 
   return (
     <section aria-labelledby="funnel-h" className="overflow-hidden rounded-2xl border border-line bg-surface">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-6 pb-2 pt-6 sm:px-8">
-        <h2 id="funnel-h" className="text-xl font-semibold tracking-tight text-ink">Last 24 hours</h2>
-        <p className="text-sm text-faint">Articles scanned → recent → funding news → in scope (stage, country) → qualified → drafted</p>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-6 pb-2 pt-6 sm:px-8">
+        <h2 id="funnel-h" className="text-xl font-semibold tracking-tight text-ink">{meta.title}</h2>
+        <RangeTabs range={range} onPick={pick} busy={pending} />
+        <p className="basis-full text-sm text-faint">Articles scanned → recent → funding news → in scope (stage, country) → qualified → drafted</p>
       </div>
+      <div className={`transition-opacity ${pending ? "opacity-50" : ""}`}>
 
       <div className="px-3 sm:px-6">
         {empty ? (
-          <p className="flex h-[250px] items-center justify-center px-6 text-center text-sm text-muted">Nothing has been scanned in the last 24 hours. Run a scan to fill this in.</p>
+          <p className="flex h-[250px] items-center justify-center px-6 text-center text-sm text-muted">Nothing has been scanned in the last {meta.label}. Run a scan to fill this in.</p>
         ) : (
           <>
             <div className="h-[250px] w-full" aria-hidden="true">
@@ -123,8 +150,8 @@ export default function FunnelChartBig({ current, previous }: { current: FunnelC
       </div>
 
       <div className="grid gap-6 px-6 pb-4 pt-5 sm:grid-cols-2 sm:px-8">
-        <Headline label="Funding news found" now={current.funding} before={previous.funding} />
-        <Headline label="Qualified for outreach" now={current.qualified} before={previous.qualified} />
+        <Headline label="Funding news found" now={current.funding} before={previous.funding} previous={meta.previous} />
+        <Headline label="Qualified for outreach" now={current.qualified} before={previous.qualified} previous={meta.previous} />
       </div>
 
       <div className="px-6 pb-3 sm:px-8">
@@ -146,6 +173,7 @@ export default function FunnelChartBig({ current, previous }: { current: FunnelC
             </motion.li>
           ))}
         </ul>
+      </div>
       </div>
     </section>
   );

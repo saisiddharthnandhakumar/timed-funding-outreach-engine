@@ -3,12 +3,14 @@ import { opportunitiesData, discoveriesData, configured } from "@/lib/queries";
 import { PageHeader, SetupNotice, StatusChip, Tag, TextLink, btn, type Tone } from "@/components/ui";
 import { EmptyState } from "@/components/empty-state";
 import { OpportunityRow } from "@/components/opportunity/opportunity-card";
+import { OverrideButton } from "@/components/opportunity/override-button";
 import { FilterPopover } from "@/components/opportunity/filter-popover";
 import { applyFilters, advancedCount, filterOptions, matchesStatus, parseFilters, STATUS_FILTERS, STATUS_FILTER_LABEL, type OpportunityFilters } from "@/lib/opportunity/filters";
 import { ago, formatAmount, formatDateTime, plural, stageLabel } from "@/lib/format";
 import { articleStatusLabel, rejectionLabel, roundStatusLabel } from "@/lib/labels";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // "Pursue anyway" researches, scores, searches contacts and drafts in one server action
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -171,7 +173,10 @@ async function DiscoveriesView({ params }: { params: Params }) {
                     <TextLink href={`/opportunities/${r.startups.id}`}>{r.startups.name}</TextLink>
                     <p className="mt-0.5 text-sm text-muted">{[r.stage && r.stage !== "unknown" ? stageLabel(r.stage) : null, r.amount != null ? formatAmount(r.amount, r.currency) : null, ago(r.earliest_source_published_at, now)].filter(Boolean).join(" · ")}</p>
                   </div>
-                  <Tag>{rejectionLabel(r.rejection_reason) ?? "Filtered"}</Tag>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Tag>{rejectionLabel(r.rejection_reason) ?? "Filtered"}</Tag>
+                    {r.rejection_reason !== "already_contacted" && <OverrideButton roundId={r.id} />}
+                  </div>
                 </li>
               ))}
               {filtered.map((a) => (

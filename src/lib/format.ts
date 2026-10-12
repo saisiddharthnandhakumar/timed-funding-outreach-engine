@@ -65,9 +65,10 @@ export function compactDuration(minutes: number): string {
 }
 
 /** "Good morning" / "Good afternoon" / "Good evening" in the scout's timezone (IST). */
-export function greeting(now = new Date()): string {
+export function greeting(now = new Date(), name?: string): string {
   const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", hour12: false }).format(now)) % 24;
-  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const hello = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  return name ? `${hello}, ${name}` : hello;
 }
 
 export function median(values: number[]): number | null {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { todayData, configured } from "@/lib/queries";
+import { parseRange } from "@/lib/ranges";
 import { OpportunityCard } from "@/components/opportunity/opportunity-card";
 import { SystemHealthLine } from "@/components/shell/system-health";
 import { ScanPanel } from "@/components/scan-panel";
@@ -10,10 +11,12 @@ import { ago, greeting, plural } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 const PRIORITY_LIMIT = 5;
+const SCOUT_NAME = "Rohit";
 
-export default async function TodayPage() {
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ range?: string | string[] }> }) {
   if (!configured()) return <SetupNotice message="Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (see .env.example) and apply the migrations." />;
-  const d = await todayData();
+  const range = parseRange((await searchParams).range);
+  const d = await todayData(range);
   const now = new Date();
   const n = d.attention.length;
   const shown = d.attention.slice(0, PRIORITY_LIMIT);
@@ -22,7 +25,7 @@ export default async function TodayPage() {
   return (
     <>
       <header className="mb-10">
-        <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">{n > 0 ? greeting(now) : "You’re caught up."}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">{n > 0 ? greeting(now, SCOUT_NAME) : "You’re caught up."}</h1>
         {n > 0 ? (
           <div className="mt-3 space-y-0.5 text-lg text-ink sm:text-xl">
             <p>{plural(n, "opportunity", "opportunities")} {n === 1 ? "needs" : "need"} your attention</p>
@@ -55,7 +58,7 @@ export default async function TodayPage() {
         )}
       </header>
 
-      <div className="mb-12"><FunnelChartBig current={d.funnel.current} previous={d.funnel.previous} /></div>
+      <div className="mb-12"><FunnelChartBig range={range} current={d.funnel.current} previous={d.funnel.previous} /></div>
 
       {n > 0 ? (
         <Section
