@@ -118,6 +118,18 @@ Re-running: *Re-run contact search* on the startup page, or `npm run contacts --
 
 Requires migration `supabase/migrations/20261012000006_contact_enrichment.sql` (apply it **before** deploying). Optional env vars: `GITHUB_TOKEN`, `HUNTER_API_KEY`, `CONTACT_*` (see `.env.example`). No new GitHub Actions secrets are needed: the existing 2-hourly workflow already triggers the pipeline.
 
+## Sending email (Resend, human-triggered)
+
+Each approved draft on the **Drafts** page has a **Send email** button. Sending is never automatic: nothing in the pipeline calls it, and every send needs your click plus a confirmation dialog showing the To and From addresses.
+
+Rules enforced in code (`src/lib/outreach/send.ts`):
+- Only a draft in status `approved` can be sent; `sent` drafts can never be sent again.
+- A valid recipient email is required. If the address is a known discovered contact, it must be `publicly_confirmed` or `provider_verified`; guessed (`pattern_guessed`), `domain_valid_only` and `unverified` addresses are refused. An address you typed in yourself is allowed, because that is your own decision.
+- Resend's `Idempotency-Key` (draft id + content hash) means a double-click or a retry after a timeout cannot deliver the email twice. A failed send leaves the draft `approved` and shows Resend's error.
+- Every send / failure is logged in `pipeline_events` (`email_sent`, `email_send_failed`) with the Resend message id.
+
+Setup: verify your domain in Resend, then set `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (an address on the verified domain), and optionally `RESEND_FROM_NAME` and `RESEND_REPLY_TO`. The sender is currently `rohit@wakeandwyze.com` with replies to `hello@wakeandwyze.com`. The email goes out as plain text exactly as saved on the draft (save edits first). The app adds no unsubscribe footer; include your own sign-off and opt-out wording in the draft, and check local anti-spam and data-protection rules before sending at volume.
+
 ## Gmail drafts
 
 If the three Google OAuth variables are set, drafts are created via `users.drafts.create` (scope `gmail.compose`; the code has no send path). Otherwise drafts are stored in Supabase and reviewed in the **Drafts** page. Gmail is never faked.

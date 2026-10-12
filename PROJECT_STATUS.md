@@ -61,6 +61,13 @@ Implemented in code, **not yet committed, migrated or deployed**:
 - [x] Migration `20261012000007_pipeline_progress.sql` written (**not applied**); 8 unit tests
 - [ ] Apply migration, run the pipeline once and watch the panel on a real run
 
+## Sending via Resend (2026-10-12) — implemented, NOT yet committed/pushed
+
+- [x] Domain `wakeandwyze.com` added and verified in Resend (DKIM, SPF, return-path all verified)
+- [x] Send button on approved drafts with guards (approved only, valid recipient, no guessed addresses, idempotent), 13 tests
+- [x] `RESEND_API_KEY`, `RESEND_FROM_EMAIL=rohit@wakeandwyze.com`, `RESEND_REPLY_TO=hello@wakeandwyze.com` set in `.env.local` and Vercel Production
+- [ ] Commit/push; then send one real test (to an address you own) to confirm end to end. No email has been sent yet.
+
 ## Remaining
 
 - [ ] Phase 16 — Final acceptance sign-off (checklist in PRD §39), including a secret scan and a live check of the deployed URL
