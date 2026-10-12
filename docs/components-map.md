@@ -120,3 +120,32 @@ Business rules live in Supabase (`accelerator_theses`, `scoring_criteria`): allo
 Public landing page at `/` (`src/app/page.tsx`); the operator pages live in the `(app)` route group, whose layout adds the navigation bar. Light/dark mode is a class on `<html>` set before paint by an inline script (saved choice, else the OS preference) and switched by `components/theme-toggle.tsx`; `globals.css` remaps the Tailwind palette variables under `.dark`.
 
 **Access.** There is no login: anyone with the URL can view the pages, edit the thesis, review drafts and trigger a run. `/api/cron/pipeline` still requires `CRON_SECRET`. The run lock prevents overlapping runs, but see the README for the exposure this implies.
+
+## Contact discovery (`src/lib/contacts`)
+
+Runs after a startup qualifies and before the draft is created (`pipeline/run.ts` → `enrichContactsSafely`, plus a per-run backfill). Free sources only.
+
+```mermaid
+flowchart LR
+  Q[Qualified startup] --> A[Official site crawl<br/>mailto · text · JSON-LD · cfemail]
+  A --> C[GitHub public profile/org email]
+  C --> B[Gemini grounded search<br/>fetch cited pages, extract]
+  B --> P[Pattern guesses<br/>stored, never used]
+  P --> V[Syntax + MX<br/>+ optional Hunter]
+  V --> R{Rank}
+  R -->|1-2 founder · 3 company · 4 form| PC[Preferred contact]
+  R -->|none reliable| NF[not_found]
+  PC --> D[Draft recipient prefill<br/>confirmed/verified only]
+```
+
+| Module | Role |
+|---|---|
+| `crawler.ts`, `robots.ts`, `http.ts` | Polite same-domain crawl, robots.txt, retries with jittered backoff, per-host rate limit; all fetches go through `net/safe-fetch.ts` (SSRF guard on every redirect) |
+| `extract.ts`, `attribute.ts`, `names.ts` | Email extraction and founder/company attribution |
+| `github.ts`, `search.ts`, `patterns.ts` | Discovery providers |
+| `verify.ts` | Syntax, MX (null-MX aware), optional Hunter verification |
+| `rank.ts` | Preferred-contact hierarchy and non-downgrading merge |
+| `pipeline.ts` | Orchestration (`enrichStartupContacts`, `enrichMany`); store/provider interfaces for testing |
+| `storage.ts`, `budget.ts` | Supabase persistence (idempotent upserts), monthly free-quota budget |
+
+Tables: `startup_contacts` (one row per address / contact form; one preferred per startup), `enrichment_budget`; columns `startups.contact_status/contact_checked_at/contact_error`.

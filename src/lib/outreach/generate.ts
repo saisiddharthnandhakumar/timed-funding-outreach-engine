@@ -4,6 +4,7 @@ import type { AIService } from "@/lib/gemini/service";
 import { generateOutreach } from "@/lib/gemini/tasks";
 import type { StartupProfile } from "@/lib/gemini/schemas";
 import { errorMessage } from "@/lib/util/text";
+import { preferredRecipient } from "@/lib/contacts";
 import { hasPriorOutreach, type OutreachLookup } from "./guard";
 import type { DraftProvider } from "./providers/types";
 
@@ -42,6 +43,9 @@ export async function createOutreachDraft(
   if (await hasPriorOutreach(lookup, args.startupId)) return { created: false, reason: "already_contacted" };
 
   const founderName = pickFounder(args.profile);
+  // Only a published/verified preferred contact is ever prefilled (never a guessed address).
+  const recipient = await preferredRecipient(args.startupId);
+  const recipientName = recipient?.name ?? founderName;
   const email = await generateOutreach(ai, {
     senderName: env().OUTREACH_SENDER_NAME ?? "Rohit",
     acceleratorName: env().ACCELERATOR_NAME ?? "our accelerator",
@@ -59,8 +63,8 @@ export async function createOutreachDraft(
       startup_id: args.startupId,
       funding_round_id: args.roundId,
       fit_assessment_id: args.assessmentId,
-      recipient_name: founderName,
-      recipient_email: null,
+      recipient_name: recipientName,
+      recipient_email: recipient?.email ?? null,
       subject: email.subject.trim(),
       body: email.body.trim(),
       draft_provider: provider.name,
@@ -78,7 +82,7 @@ export async function createOutreachDraft(
   if (provider.name === "database") return { created: true, outreachId, status: "generated", provider: "database" };
 
   try {
-    const ext = await provider.createDraft({ to: null, toName: founderName, subject: email.subject.trim(), body: email.body.trim() });
+    const ext = await provider.createDraft({ to: recipient?.email ?? null, toName: recipientName, subject: email.subject.trim(), body: email.body.trim() });
     unwrap(
       await db().from("outreach").update({ status: "draft_created", external_draft_id: ext?.externalId ?? null }).eq("id", outreachId),
       "mark draft_created",

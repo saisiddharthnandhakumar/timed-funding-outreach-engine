@@ -67,7 +67,16 @@ export async function qualifiedData() {
   ) as any[];
   const ids = assessments.map((a) => a.startup_id);
   const outreach = ids.length ? unwrap(await db().from("outreach").select("startup_id,status").in("startup_id", ids), "outreach status") as { startup_id: string; status: string }[] : [];
-  return { assessments, outreachByStartup: new Map(outreach.map((o) => [o.startup_id, o.status])) };
+  // Preferred contact per startup (empty until the contact-enrichment migration is applied).
+  let contactByStartup = new Map<string, { kind: string; email: string | null; contact_url: string | null; verification_status: string }>();
+  let contactStatusByStartup = new Map<string, string>();
+  if (ids.length) {
+    const st = await db().from("startups").select("id,contact_status").in("id", ids);
+    if (!st.error) contactStatusByStartup = new Map((st.data ?? []).map((r) => [r.id as string, r.contact_status as string]));
+    const res = await db().from("startup_contacts").select("startup_id,kind,email,contact_url,verification_status").in("startup_id", ids).eq("is_preferred", true);
+    if (!res.error) contactByStartup = new Map((res.data ?? []).map((c) => [c.startup_id as string, c as any]));
+  }
+  return { assessments, outreachByStartup: new Map(outreach.map((o) => [o.startup_id, o.status])), contactByStartup, contactStatusByStartup };
 }
 
 export async function startupDetail(id: string) {
@@ -79,7 +88,8 @@ export async function startupDetail(id: string) {
     db().from("fit_assessments").select("*").eq("startup_id", id).order("assessed_at", { ascending: false }),
     db().from("outreach").select("*").eq("startup_id", id).order("created_at", { ascending: false }),
   ]);
-  return { startup, founders: founders.data ?? [], rounds: rounds.data ?? [], assessments: assessments.data ?? [], outreach: outreach.data ?? [] } as any;
+  const contacts = await db().from("startup_contacts").select("*").eq("startup_id", id).order("kind").order("created_at");
+  return { startup, founders: founders.data ?? [], rounds: rounds.data ?? [], assessments: assessments.data ?? [], outreach: outreach.data ?? [], contacts: contacts.error ? [] : contacts.data ?? [] } as any;
 }
 
 export async function draftsData() {

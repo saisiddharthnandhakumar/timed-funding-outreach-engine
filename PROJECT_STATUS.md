@@ -46,6 +46,15 @@ Implemented in code, **not yet committed, migrated or deployed**:
 - [x] Password login removed (`proxy.ts`, `/login`, `ADMIN_PASSWORD` gone from code, env example and push script). **The app is now open to anyone with the URL** (cron endpoint still needs `CRON_SECRET`)
 - [ ] Redeploy needed; `ADMIN_PASSWORD` can be deleted from Vercel env vars
 
+## Contact discovery (2026-10-12) — implemented, NOT yet migrated/deployed
+
+- [x] `src/lib/contacts/*` (crawler, extraction, attribution, GitHub, grounded search, patterns, verification, ranking, storage, budget), integrated after qualification and as a per-run backfill
+- [x] Migration `20261012000006_contact_enrichment.sql` written (**not applied**)
+- [x] UI: contact card on startup page (copy, re-run), Contact column on Qualified; CLI `npm run contacts`
+- [x] 33 mocked tests (all 10 specified scenarios) + one live crawl smoke test against a real public site
+- [ ] Apply migration to Supabase, then deploy. Until applied, contact steps log errors (runs show `partial`) and the new UI sections stay empty
+- [ ] Live end-to-end contact run on a real qualified startup (needs the migration and the Gemini key)
+
 ## Remaining
 
 - [ ] Phase 16 — Final acceptance sign-off (checklist in PRD §39), including a secret scan and a live check of the deployed URL

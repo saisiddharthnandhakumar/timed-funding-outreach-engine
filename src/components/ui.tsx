@@ -48,7 +48,8 @@ export function Badge({ children, tone = "slate" }: { children: ReactNode; tone?
 const STATUS_TONE: Record<string, keyof typeof TONES> = {
   discovered: "blue", enriching: "blue", scored: "indigo", qualified: "green", drafted: "green", rejected: "red", error: "amber",
   generated: "indigo", draft_created: "green", approved: "green", sent: "slate", cancelled: "slate",
-  completed: "green", partial: "amber", failed: "red", skipped: "slate", running: "blue", pending: "slate", duplicate: "slate", processed: "green",
+  completed: "green", partial: "amber", failed: "red", skipped: "slate",
+  publicly_confirmed: "green", provider_verified: "green", domain_valid_only: "amber", pattern_guessed: "amber", unverified: "slate", not_found: "slate", in_progress: "blue", running: "blue", pending: "slate", duplicate: "slate", processed: "green",
 };
 
 export function StatusBadge({ status }: { status: string | null | undefined }) {

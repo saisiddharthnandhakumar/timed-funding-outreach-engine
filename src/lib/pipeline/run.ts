@@ -13,6 +13,7 @@ import { persistEnrichment, researchStartup } from "@/lib/research/enrich";
 import { assessRound } from "@/lib/scoring/assess";
 import { loadActiveScoringConfig } from "@/lib/scoring/config";
 import { createOutreachDraft } from "@/lib/outreach/generate";
+import { enrichBatch, enrichOne, pendingQualifiedStartups, type ContactOutcome } from "@/lib/contacts";
 import { hasPriorOutreach } from "@/lib/outreach/guard";
 import { selectDraftProvider } from "@/lib/outreach/providers";
 import type { DraftProvider } from "@/lib/outreach/providers/types";
@@ -28,6 +29,8 @@ export interface PipelineDeps {
   fetchArticleText?: (url: string) => Promise<{ text: string; links: { href: string; text: string }[] }>;
   draftProvider?: DraftProvider;
   now?: () => Date;
+  /** Founder-first contact discovery for a qualified startup (default: real providers). Tests inject a fake. */
+  enrichContacts?: (startupId: string) => Promise<ContactOutcome | null>;
 }
 
 export interface RunOptions {
@@ -158,6 +161,9 @@ async function executePipeline(deps: PipelineDeps, opts: RunOptions, runId: stri
 
     // Stage 2+ — per-article funnel
     await processPending(ctx, opts.maxArticles ?? env().PIPELINE_MAX_ARTICLES_PER_RUN, opts.sourceKeys);
+
+    // Stage 3 — contact discovery backfill for qualified startups that have none yet (earlier runs / time-budget skips).
+    if (!opts.skipIngest && !opts.sourceKeys) await backfillContacts(ctx);
   } catch (err) {
     await recordError("pipeline", err);
     summary.status = "failed";
@@ -506,6 +512,9 @@ async function evaluateRound(ctx: Ctx, roundId: string): Promise<RoundEval> {
     ctx.summary.qualified++;
     await setRound(roundId, { status: "qualified" });
 
+    // Founder-first contact discovery (free sources only) so the draft can be addressed. Never blocks the draft.
+    await enrichContactsSafely(ctx, startup.id, startup.name);
+
     // Personalised outreach (Gemini Task 4) → draft provider. Never sends.
     const { thesis } = await loadActiveScoringConfig();
     const out = await createOutreachDraft(ctx.deps.ai, ctx.outreachLookup, ctx.draftProvider, {
@@ -526,6 +535,38 @@ async function evaluateRound(ctx: Ctx, roundId: string): Promise<RoundEval> {
     await setRound(roundId, { status: "error", last_error: errorMessage(err) });
     await ctx.recordError(`round:${startup.name}`, err, { type: "round", id: roundId });
     return { eligibility: `error: ${errorMessage(err).slice(0, 80)}`, score: null, draft: "none" };
+  }
+}
+
+const CONTACT_MIN_SECONDS_LEFT = 60;
+
+/** Contact discovery must never fail the pipeline: errors are logged/recorded, the draft is still created. */
+async function enrichContactsSafely(ctx: Ctx, startupId: string, name: string): Promise<void> {
+  if (ctx.deadline - Date.now() < CONTACT_MIN_SECONDS_LEFT * 1000) {
+    await ctx.log.event("startup", startupId, "contacts_deferred", `${name}: not enough run time left; will be picked up by the next run`);
+    return;
+  }
+  try {
+    const outcome = await (ctx.deps.enrichContacts ?? ((id: string) => enrichOne(ctx.deps.ai, id, { log: ctx.log })))(startupId);
+    if (outcome?.status === "failed") await ctx.recordError(`contacts:${name}`, outcome.warnings.join(" | ") || "contact discovery failed", { type: "startup", id: startupId });
+  } catch (err) {
+    await ctx.recordError(`contacts:${name}`, err, { type: "startup", id: startupId });
+  }
+}
+
+/** Up to CONTACT_BACKFILL_PER_RUN qualified startups that never went through contact discovery, within the time budget. */
+async function backfillContacts(ctx: Ctx): Promise<void> {
+  const limit = env().CONTACT_BACKFILL_PER_RUN;
+  if (!limit || ctx.deadline - Date.now() < CONTACT_MIN_SECONDS_LEFT * 1000) return;
+  try {
+    const ids = await pendingQualifiedStartups(limit);
+    if (!ids.length) return;
+    const outcomes = ctx.deps.enrichContacts
+      ? await Promise.all(ids.map((id) => ctx.deps.enrichContacts!(id)))
+      : await enrichBatch(ctx.deps.ai, ids, { deadline: ctx.deadline - CONTACT_MIN_SECONDS_LEFT * 1000, log: ctx.log });
+    await ctx.log.event("pipeline", null, "contacts_backfill", `Contact discovery backfill: ${ids.length} startup(s)`, { statuses: outcomes.map((o) => o?.status) });
+  } catch (err) {
+    await ctx.recordError("contacts:backfill", err);
   }
 }
 

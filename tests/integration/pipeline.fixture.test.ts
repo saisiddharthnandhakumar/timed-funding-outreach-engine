@@ -43,6 +43,7 @@ suite("fixture pipeline (real DB, fake AI, fixture sources)", () => {
     createAdapter: (row: { key: string }) => adapters[row.key],
     fetchArticleText: async () => ({ text: "x".repeat(700), links: [] }),
     draftProvider: new DatabaseDraftProvider(),
+    enrichContacts: async () => null, // contact discovery is covered by tests/contacts/*; no network here
   };
   const sourceIds: string[] = [];
 

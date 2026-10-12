@@ -2,15 +2,19 @@ import { notFound } from "next/navigation";
 import { startupDetail, configured } from "@/lib/queries";
 import { Badge, Card, PageHeader, ScorePill, SetupNotice, StatusBadge } from "@/components/ui";
 import { formatAmount, formatDateTime, stageLabel } from "@/lib/format";
+import { CopyButton } from "@/components/copy-button";
+import { RerunContactsButton } from "@/components/rerun-contacts-button";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 120; // the "re-run contact search" server action crawls a site and calls Gemini
 
 export default async function StartupPage({ params }: { params: Promise<{ id: string }> }) {
   if (!configured()) return <SetupNotice message="Supabase is not configured." />;
   const { id } = await params;
   const d = await startupDetail(id);
   if (!d) notFound();
-  const { startup, founders, rounds, assessments, outreach } = d;
+  const { startup, founders, rounds, assessments, outreach, contacts } = d;
+  const preferred = (contacts as any[]).find((c) => c.is_preferred) ?? null;
   const p = startup.profile_json as Record<string, any> | null;
   const sources = (startup.research_sources ?? []) as { url: string; kind: string; title: string | null }[];
 
@@ -58,6 +62,62 @@ export default async function StartupPage({ params }: { params: Promise<{ id: st
           )}
         </Card>
       </div>
+
+            <Card
+        title="Contact details"
+        className="mt-6"
+      >
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-slate-500">Status</span><StatusBadge status={startup.contact_status} />
+            {startup.contact_checked_at && <span className="text-xs text-slate-400">last checked {formatDateTime(startup.contact_checked_at)}</span>}
+          </div>
+          <RerunContactsButton startupId={startup.id} />
+        </div>
+        {startup.contact_error && <p className="mb-3 rounded-md bg-rose-50 p-2 text-xs text-rose-800">{startup.contact_error}</p>}
+        {preferred ? (
+          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Preferred outreach contact · {preferred.kind === "contact_form" ? "Contact form" : preferred.kind === "founder" ? "Founder" : "Company"}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              {preferred.email ? <><span className="font-medium text-slate-900">{preferred.email}</span><CopyButton value={preferred.email} /></> : <a href={preferred.contact_url} target="_blank" rel="noreferrer" className="font-medium text-indigo-700 hover:underline">{preferred.contact_url}</a>}
+              <StatusBadge status={preferred.verification_status} />
+              {preferred.founder_name && <span className="text-slate-600">{preferred.founder_name}</span>}
+            </div>
+          </div>
+        ) : (
+          <p className="mb-4 text-sm text-slate-500">No reliable published contact found yet. {founders.some((f: any) => f.linkedin_url) ? "A founder LinkedIn profile is listed above for manual outreach." : ""}</p>
+        )}
+        {(contacts as any[]).length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr><th className="py-2 pr-4">Contact</th><th className="py-2 pr-4">Type</th><th className="py-2 pr-4">Verification</th><th className="py-2 pr-4">Source</th><th className="py-2">Checked</th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 align-top">
+                {(contacts as any[]).map((c) => (
+                  <tr key={c.id}>
+                    <td className="py-2 pr-4">
+                      <div className="flex items-center gap-2">
+                        {c.email ? <><span className="text-slate-900">{c.email}</span><CopyButton value={c.email} /></> : <a href={c.contact_url} target="_blank" rel="noreferrer" className="text-indigo-700 hover:underline">Contact form</a>}
+                        {c.is_preferred && <Badge tone="green">preferred</Badge>}
+                      </div>
+                      {c.founder_name && <div className="text-xs text-slate-500">{c.founder_name}</div>}
+                    </td>
+                    <td className="py-2 pr-4 capitalize text-slate-600">{c.kind.replace("_", " ")}{c.mailbox_role && c.kind === "company" ? ` · ${c.mailbox_role}` : ""}</td>
+                    <td className="py-2 pr-4"><StatusBadge status={c.verification_status} />{c.mx_valid === false && <div className="mt-1 text-xs text-rose-600">domain has no mail server</div>}</td>
+                    <td className="max-w-xs py-2 pr-4 text-xs text-slate-500">
+                      {c.source_url ? <a href={c.source_url} target="_blank" rel="noreferrer" className="text-indigo-700 hover:underline">{c.discovery_source.replace("_", " ")}</a> : c.discovery_source.replace("_", " ")}
+                      {c.evidence && <div className="mt-0.5">{c.evidence}</div>}
+                    </td>
+                    <td className="whitespace-nowrap py-2 text-xs text-slate-400">{formatDateTime(c.last_checked_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-3 text-xs text-slate-400">&ldquo;Pattern guessed&rdquo; and &ldquo;unverified&rdquo; addresses are kept for reference only. They are never filled into a draft. A valid mail domain does not prove a mailbox exists.</p>
+          </div>
+        )}
+      </Card>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card title="Funding rounds & source articles">
