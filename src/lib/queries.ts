@@ -270,14 +270,17 @@ export async function draftDetail(id: string) {
 // ───────────────────────────── settings ─────────────────────────────
 
 export async function sourcesData() {
-  const sources = unwrap(await db().from("sources").select("*").order("name"), "sources") as any[];
   const windowStart = Date.now() - 14 * 86_400_000;
-  const links = unwrap(
-    await db().from("funding_round_sources").select("funding_round_id,source_id,source_published_at,first_seen_at").gte("source_published_at", new Date(windowStart).toISOString()).limit(5000),
-    "round sources",
-  ) as { funding_round_id: string; source_id: string; source_published_at: string | null; first_seen_at: string }[];
+  // The source list, the 14-day report links and every per-source article count are independent, so fetch them together
+  // (counting sources one after another made this page take seconds once the list grew past a handful).
+  const [sourcesRes, linksRes] = await Promise.all([
+    db().from("sources").select("*").order("name"),
+    db().from("funding_round_sources").select("funding_round_id,source_id,source_published_at,first_seen_at").gte("source_published_at", new Date(windowStart).toISOString()).limit(5000),
+  ]);
+  const sources = unwrap(sourcesRes, "sources") as any[];
+  const links = unwrap(linksRes, "round sources") as { funding_round_id: string; source_id: string; source_published_at: string | null; first_seen_at: string }[];
   const articleCounts = new Map<string, number>();
-  for (const s of sources) articleCounts.set(s.id, await count("funding_articles", (q) => q.eq("source_id", s.id)));
+  await Promise.all(sources.map(async (s) => articleCounts.set(s.id, await count("funding_articles", (q) => q.eq("source_id", s.id)))));
 
   const byRound = new Map<string, typeof links>();
   for (const l of links) byRound.set(l.funding_round_id, [...(byRound.get(l.funding_round_id) ?? []), l]);
