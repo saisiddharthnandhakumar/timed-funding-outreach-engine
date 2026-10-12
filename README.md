@@ -36,6 +36,9 @@ Funding sources → adapters → ingestion (funding_articles)
 | Inc42 — Buzz | RSS (`/buzz/feed/`) |
 | YourStory | RSS (`/feed`) |
 | Entrackr | Google-News sitemap (`/news-sitemap.xml`, allowed by its robots.txt; no RSS exists) |
+| ET Startups (ETtech) | RSS (`/tech/startups/rssfeeds/78570550.cms`) — added 2026-10-12; ~37 of 50 headlines are funding stories and it surfaces deals the other four miss |
+
+Candidates evaluated and **rejected** (2026-10-12): Inc42 `/tag/funding/` feed (stale since 2023), Moneycontrol and Business Standard (HTTP 403 to bots — not bypassed), VCCircle (404/paywalled), ETtech general, Livemint, BusinessLine, TOI, TechCrunch India, Medianama, StartupTalky (0–4 funding stories per ~50 items, or stale), Google News search (links resolve to a JS page, not the article), PR Newswire (global noise).
 
 New sources: insert an `rss`/`sitemap` row into `sources`, or implement `FundingSourceAdapter` (`src/lib/sources/types.ts`) and register it.
 

@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart TD
-    FS["Funding sources<br/>ET Entrepreneur RSS · Inc42 Buzz RSS · YourStory RSS · Entrackr news sitemap"] --> SA["Source adapters<br/>(FundingSourceAdapter: RssAdapter, NewsSitemapAdapter)"]
+    FS["Funding sources<br/>ET Entrepreneur RSS · ET Startups RSS · Inc42 Buzz RSS · YourStory RSS · Entrackr news sitemap"] --> SA["Source adapters<br/>(FundingSourceAdapter: RssAdapter, NewsSitemapAdapter)"]
     SA --> ING["Ingestion<br/>canonical URL, source_published_at, first_seen_at<br/>idempotent upsert"]
     ING --> RAW[("Supabase: funding_articles<br/>raw articles + timestamps")]
     RAW --> CHEAP{"Cheap gates (no AI)<br/>age &gt; max hours?<br/>funding keywords?"}
@@ -68,7 +68,7 @@ flowchart TD
 | Gemini Flash (Google AI) | **Every** runtime AI call (classification, profile synthesis, scoring, outreach; Google Search grounding for research) |
 | Gmail API (optional) | `users.drafts.create` only — drafts, never sends |
 | Vercel | Hosting + Cron |
-| ET Entrepreneur, Inc42, YourStory, Entrackr | Public funding-news feeds |
+| ET Entrepreneur, ET Startups, Inc42, YourStory, Entrackr | Public funding-news feeds |
 
 ## Data stores (Supabase tables)
 

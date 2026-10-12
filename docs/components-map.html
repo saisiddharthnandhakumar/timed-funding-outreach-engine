@@ -1,0 +1,202 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Components Map</title>
+<style>body{margin:0;padding:24px;background:#0b0f1d;color:#e7ebf5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+h1{font-size:20px;margin:0 0 4px}p{margin:0 0 16px;color:#8e98b4;font-size:14px}
+.wrap{overflow-x:auto}svg{display:block;max-width:none}
+.lgs{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;font-size:13px;color:#aab3cc}
+.lg{display:inline-flex;align-items:center;gap:8px}.lg i{width:18px;height:12px;border-radius:3px;border:1.5px solid;display:inline-block}</style></head>
+<body><h1>Timed Funding Outreach Engine: components map</h1>
+<p>One pipeline run, left to right and top to bottom. Every AI step is Gemini Flash; every score total and eligibility rule is computed in code.</p>
+<div class="wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1580 1176" width="1580" height="1176" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1580" height="1176" rx="18" fill="#161b2e"/>
+<rect width="1580" height="56" rx="18" fill="#0d1224"/><rect y="30" width="1580" height="26" fill="#0d1224"/>
+<rect x="0" y="56" width="170" height="112" fill="#0f1527"/>
+<rect x="170" y="56" width="1410" height="112" fill="#1a2036"/>
+<line x1="0" x2="1580" y1="56" y2="56" stroke="#262d47"/>
+<text x="18" y="108.0" fill="#f1f4fb" font-size="15" font-weight="700">Scheduler</text>
+<text x="18" y="128.0" fill="#8e98b4" font-size="12">Cron, GitHub, button</text>
+<rect x="0" y="168" width="170" height="112" fill="#0f1527"/>
+<line x1="0" x2="1580" y1="168" y2="168" stroke="#262d47"/>
+<text x="18" y="220.0" fill="#f1f4fb" font-size="15" font-weight="700">News sources</text>
+<text x="18" y="240.0" fill="#8e98b4" font-size="12">4 public funding feeds</text>
+<rect x="0" y="280" width="170" height="112" fill="#0f1527"/>
+<rect x="170" y="280" width="1410" height="112" fill="#1a2036"/>
+<line x1="0" x2="1580" y1="280" y2="280" stroke="#262d47"/>
+<text x="18" y="332.0" fill="#f1f4fb" font-size="15" font-weight="700">Ingestion</text>
+<text x="18" y="352.0" fill="#8e98b4" font-size="12">Next.js on Vercel</text>
+<rect x="0" y="392" width="170" height="112" fill="#0f1527"/>
+<line x1="0" x2="1580" y1="392" y2="392" stroke="#262d47"/>
+<text x="18" y="444.0" fill="#f1f4fb" font-size="15" font-weight="700">Extraction</text>
+<text x="18" y="464.0" fill="#8e98b4" font-size="12">Backend + Gemini Flash</text>
+<rect x="0" y="504" width="170" height="112" fill="#0f1527"/>
+<rect x="170" y="504" width="1410" height="112" fill="#1a2036"/>
+<line x1="0" x2="1580" y1="504" y2="504" stroke="#262d47"/>
+<text x="18" y="556.0" fill="#f1f4fb" font-size="15" font-weight="700">Filtering</text>
+<text x="18" y="576.0" fill="#8e98b4" font-size="12">Backend · deterministic</text>
+<rect x="0" y="616" width="170" height="112" fill="#0f1527"/>
+<line x1="0" x2="1580" y1="616" y2="616" stroke="#262d47"/>
+<text x="18" y="668.0" fill="#f1f4fb" font-size="15" font-weight="700">Research</text>
+<text x="18" y="688.0" fill="#8e98b4" font-size="12">Backend + Gemini Flash</text>
+<rect x="0" y="728" width="170" height="112" fill="#0f1527"/>
+<rect x="170" y="728" width="1410" height="112" fill="#1a2036"/>
+<line x1="0" x2="1580" y1="728" y2="728" stroke="#262d47"/>
+<text x="18" y="780.0" fill="#f1f4fb" font-size="15" font-weight="700">Scoring</text>
+<text x="18" y="800.0" fill="#8e98b4" font-size="12">Thesis + Gemini Flash</text>
+<rect x="0" y="840" width="170" height="112" fill="#0f1527"/>
+<line x1="0" x2="1580" y1="840" y2="840" stroke="#262d47"/>
+<text x="18" y="892.0" fill="#f1f4fb" font-size="15" font-weight="700">Outreach</text>
+<text x="18" y="912.0" fill="#8e98b4" font-size="12">Backend + Gemini Flash</text>
+<rect x="0" y="952" width="170" height="112" fill="#0f1527"/>
+<rect x="170" y="952" width="1410" height="112" fill="#1a2036"/>
+<line x1="0" x2="1580" y1="952" y2="952" stroke="#262d47"/>
+<text x="18" y="1004.0" fill="#f1f4fb" font-size="15" font-weight="700">Data store</text>
+<text x="18" y="1024.0" fill="#8e98b4" font-size="12">Supabase Postgres</text>
+<rect x="0" y="1064" width="170" height="112" fill="#0f1527"/>
+<line x1="0" x2="1580" y1="1064" y2="1064" stroke="#262d47"/>
+<text x="18" y="1116.0" fill="#f1f4fb" font-size="15" font-weight="700">Operator</text>
+<text x="18" y="1136.0" fill="#8e98b4" font-size="12">Accelerator team</text>
+<text x="287.5" y="34" text-anchor="middle" fill="#f1f4fb" font-size="16" font-weight="700">Trigger</text>
+<line x1="405" x2="405" y1="0" y2="1176" stroke="#2b3350"/>
+<text x="522.5" y="34" text-anchor="middle" fill="#f1f4fb" font-size="16" font-weight="700">Input</text>
+<line x1="640" x2="640" y1="0" y2="1176" stroke="#2b3350"/>
+<text x="757.5" y="34" text-anchor="middle" fill="#f1f4fb" font-size="16" font-weight="700">Context</text>
+<line x1="875" x2="875" y1="0" y2="1176" stroke="#2b3350"/>
+<text x="992.5" y="34" text-anchor="middle" fill="#f1f4fb" font-size="16" font-weight="700">Processing</text>
+<line x1="1110" x2="1110" y1="0" y2="1176" stroke="#2b3350"/>
+<text x="1227.5" y="34" text-anchor="middle" fill="#f1f4fb" font-size="16" font-weight="700">AI</text>
+<line x1="1345" x2="1345" y1="0" y2="1176" stroke="#2b3350"/>
+<text x="1462.5" y="34" text-anchor="middle" fill="#f1f4fb" font-size="16" font-weight="700">Output</text>
+<text x="85.0" y="34" text-anchor="middle" fill="#f1f4fb" font-size="16" font-weight="700">Actor</text>
+<path d="M390.0,112.0 L890.0,112.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M1095.0,112.0 L1360.0,112.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<rect x="1193.7" y="103.0" width="67.6" height="16" rx="4" fill="#161b2e"/><text x="1227.5" y="115.0" text-anchor="middle" font-size="11" fill="#aab3cc">lock held</text>
+<path d="M992.5,152.0 L992.5,168.0 L522.5,168.0 L522.5,184.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<rect x="736.5" y="159.0" width="42.0" height="16" rx="4" fill="#161b2e"/><text x="757.5" y="171.0" text-anchor="middle" font-size="11" fill="#aab3cc">polls</text>
+<path d="M522.5,264.0 L522.5,296.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M625.0,336.0 L890.0,336.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M992.5,376.0 L992.5,392.0 L757.5,392.0 L757.5,408.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<rect x="857.2" y="383.0" width="35.6" height="16" rx="4" fill="#161b2e"/><text x="875.0" y="395.0" text-anchor="middle" font-size="11" fill="#aab3cc">pass</text>
+<path d="M860.0,448.0 L1125.0,448.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M1330.0,448.0 L1360.0,448.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M1227.5,488.0 L1227.5,504.0 L992.5,504.0 L992.5,520.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M1095.0,560.0 L1360.0,560.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<rect x="1209.7" y="551.0" width="35.6" height="16" rx="4" fill="#161b2e"/><text x="1227.5" y="563.0" text-anchor="middle" font-size="11" fill="#aab3cc">fail</text>
+<path d="M992.5,600.0 L992.5,616.0 L757.5,616.0 L757.5,632.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<rect x="857.2" y="607.0" width="35.6" height="16" rx="4" fill="#161b2e"/><text x="875.0" y="619.0" text-anchor="middle" font-size="11" fill="#aab3cc">pass</text>
+<path d="M860.0,672.0 L1125.0,672.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M1330.0,672.0 L1360.0,672.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M1227.5,712.0 L1227.5,744.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M860.0,784.0 L890.0,784.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M1125.0,784.0 L1095.0,784.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M992.5,824.0 L992.5,840.0 L1462.5,840.0 L1462.5,824.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<rect x="1187.3" y="831.0" width="80.4" height="16" rx="4" fill="#161b2e"/><text x="1227.5" y="843.0" text-anchor="middle" font-size="11" fill="#aab3cc">≥ threshold</text>
+<path d="M992.5,824.0 L992.5,840.0 L757.5,840.0 L757.5,856.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M860.0,896.0 L1125.0,896.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M1330.0,896.0 L1360.0,896.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M992.5,824.0 L992.5,968.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M1462.5,936.0 L1462.5,968.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M1095.0,1008.0 L1360.0,1008.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M1462.5,1048.0 L1462.5,1080.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<path d="M390.0,1120.0 L639.0,1120.0 L639.0,784.0 L655.0,784.0" fill="none" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)" opacity=".85"/>
+<rect x="595.6" y="944.0" width="86.8" height="16" rx="4" fill="#161b2e"/><text x="639.0" y="956.0" text-anchor="middle" font-size="11" fill="#aab3cc">edits thesis</text>
+<rect x="185.0" y="72.0" width="205" height="80" rx="10" fill="#2a2552" stroke="#8b7cf6" stroke-width="1.8"/>
+<text x="287.5" y="94.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Run trigger</text>
+<text x="287.5" y="112.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Vercel Cron daily 09:00 IST ·</text>
+<text x="287.5" y="126.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">GitHub Actions every 2 h · “Run</text>
+<text x="287.5" y="141.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">now” button</text>
+<rect x="890.0" y="72.0" width="205" height="80" rx="10" fill="#3d3112" stroke="#e0b43a" stroke-width="1.8"/>
+<text x="992.5" y="94.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Run lock</text>
+<text x="992.5" y="112.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">acquire_pipeline_lock lease: one</text>
+<text x="992.5" y="126.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">run at a time</text>
+<rect x="1360.0" y="72.0" width="205" height="80" rx="10" fill="#4a2a1a" stroke="#e8895a" stroke-width="2.2" stroke-dasharray="6 4"/>
+<text x="1462.5" y="94.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Run skipped</text>
+<text x="1462.5" y="112.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">already_running: no polls, no</text>
+<text x="1462.5" y="126.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Gemini calls</text>
+<rect x="420.0" y="184.0" width="205" height="80" rx="10" fill="#13304d" stroke="#4aa3e8" stroke-width="1.8"/>
+<text x="522.5" y="206.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Funding feeds</text>
+<text x="522.5" y="224.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">ET Entrepreneur · Inc42 ·</text>
+<text x="522.5" y="238.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">YourStory RSS + Entrackr sitemap</text>
+<rect x="420.0" y="296.0" width="205" height="80" rx="10" fill="#13304d" stroke="#4aa3e8" stroke-width="1.8"/>
+<text x="522.5" y="318.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Raw articles</text>
+<text x="522.5" y="336.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Canonical URL, published_at,</text>
+<text x="522.5" y="350.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">first_seen_at, idempotent upsert</text>
+<rect x="890.0" y="296.0" width="205" height="80" rx="10" fill="#3d3112" stroke="#e0b43a" stroke-width="1.8"/>
+<text x="992.5" y="318.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Cheap gates</text>
+<text x="992.5" y="336.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Too old? No funding keywords?</text>
+<text x="992.5" y="350.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Rejected before any AI</text>
+<rect x="655.0" y="408.0" width="205" height="80" rx="10" fill="#12362a" stroke="#3fbf7f" stroke-width="1.8"/>
+<text x="757.5" y="430.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Article text</text>
+<text x="757.5" y="448.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">SSRF-safe fetch + text extraction</text>
+<rect x="1125.0" y="408.0" width="205" height="80" rx="10" fill="#3d1737" stroke="#e85fa8" stroke-width="1.8"/>
+<text x="1227.5" y="430.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Gemini · Task 1</text>
+<text x="1227.5" y="448.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Classify + extract: India?, stage,</text>
+<text x="1227.5" y="462.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">amount, investors</text>
+<rect x="1360.0" y="408.0" width="205" height="80" rx="10" fill="#4a2a1a" stroke="#e8895a" stroke-width="1.8"/>
+<text x="1462.5" y="430.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Funding feed</text>
+<text x="1462.5" y="448.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Events with each source’s</text>
+<text x="1462.5" y="462.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">published → first-seen delay</text>
+<rect x="890.0" y="520.0" width="205" height="80" rx="10" fill="#3d3112" stroke="#e0b43a" stroke-width="1.8"/>
+<text x="992.5" y="542.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Hard filters + dedupe</text>
+<text x="992.5" y="560.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">India · pre-seed/seed · ≤24 h;</text>
+<text x="992.5" y="574.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">domain → name → stage window</text>
+<rect x="1360.0" y="520.0" width="205" height="80" rx="10" fill="#4a2a1a" stroke="#e8895a" stroke-width="2.2" stroke-dasharray="6 4"/>
+<text x="1462.5" y="542.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Rejected + reason</text>
+<text x="1462.5" y="560.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">wrong_geography · wrong_stage ·</text>
+<text x="1462.5" y="574.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">too_old · already_contacted</text>
+<rect x="655.0" y="632.0" width="205" height="80" rx="10" fill="#12362a" stroke="#3fbf7f" stroke-width="1.8"/>
+<text x="757.5" y="654.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Company evidence</text>
+<text x="757.5" y="672.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Article text, company website,</text>
+<text x="757.5" y="686.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Google Search grounding</text>
+<rect x="1125.0" y="632.0" width="205" height="80" rx="10" fill="#3d1737" stroke="#e85fa8" stroke-width="1.8"/>
+<text x="1227.5" y="654.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Gemini · Task 2</text>
+<text x="1227.5" y="672.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Startup profile synthesis,</text>
+<text x="1227.5" y="686.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">unknowns kept explicit</text>
+<rect x="1360.0" y="632.0" width="205" height="80" rx="10" fill="#4a2a1a" stroke="#e8895a" stroke-width="1.8"/>
+<text x="1462.5" y="654.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Startup profile</text>
+<text x="1462.5" y="672.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Founders, rounds, source articles,</text>
+<text x="1462.5" y="686.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">research evidence</text>
+<rect x="655.0" y="744.0" width="205" height="80" rx="10" fill="#12362a" stroke="#3fbf7f" stroke-width="1.8"/>
+<text x="757.5" y="766.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Active thesis</text>
+<text x="757.5" y="784.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Sectors, stages, weights,</text>
+<text x="757.5" y="798.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">threshold (versioned in Supabase)</text>
+<rect x="890.0" y="744.0" width="205" height="80" rx="10" fill="#3d3112" stroke="#e0b43a" stroke-width="1.8"/>
+<text x="992.5" y="766.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Score in code</text>
+<text x="992.5" y="784.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Clamp to weights, recency + stage</text>
+<text x="992.5" y="798.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">in code, total ≥ threshold?</text>
+<rect x="1125.0" y="744.0" width="205" height="80" rx="10" fill="#3d1737" stroke="#e85fa8" stroke-width="1.8"/>
+<text x="1227.5" y="766.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Gemini · Task 3</text>
+<text x="1227.5" y="784.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Per-criterion fit, signals,</text>
+<text x="1227.5" y="798.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">concerns, reasoning</text>
+<rect x="1360.0" y="744.0" width="205" height="80" rx="10" fill="#4a2a1a" stroke="#e8895a" stroke-width="1.8"/>
+<text x="1462.5" y="766.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Qualified list</text>
+<text x="1462.5" y="784.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Score + top reasons, ranked</text>
+<rect x="655.0" y="856.0" width="205" height="80" rx="10" fill="#12362a" stroke="#3fbf7f" stroke-width="1.8"/>
+<text x="757.5" y="878.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Outreach guard</text>
+<text x="757.5" y="896.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Skip if the startup was already</text>
+<text x="757.5" y="910.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">contacted</text>
+<rect x="1125.0" y="856.0" width="205" height="80" rx="10" fill="#3d1737" stroke="#e85fa8" stroke-width="1.8"/>
+<text x="1227.5" y="878.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Gemini · Task 4</text>
+<text x="1227.5" y="896.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Personalised outreach subject +</text>
+<text x="1227.5" y="910.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">body</text>
+<rect x="1360.0" y="856.0" width="205" height="80" rx="10" fill="#4a2a1a" stroke="#e8895a" stroke-width="1.8"/>
+<text x="1462.5" y="878.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Draft saved</text>
+<text x="1462.5" y="896.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Gmail draft (if OAuth) else</text>
+<text x="1462.5" y="910.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Supabase. Never auto-sent</text>
+<rect x="890.0" y="968.0" width="205" height="80" rx="10" fill="#3d3112" stroke="#e0b43a" stroke-width="1.8"/>
+<text x="992.5" y="990.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Supabase Postgres</text>
+<text x="992.5" y="1008.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Articles, startups, rounds,</text>
+<text x="992.5" y="1022.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">scores, outreach, events, AI cache</text>
+<rect x="1360.0" y="968.0" width="205" height="80" rx="10" fill="#4a2a1a" stroke="#e8895a" stroke-width="1.8"/>
+<text x="1462.5" y="990.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Dashboard (Vercel)</text>
+<text x="1462.5" y="1008.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Feed · qualified · drafts ·</text>
+<text x="1462.5" y="1022.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">sources · health card · run now</text>
+<rect x="185.0" y="1080.0" width="205" height="80" rx="10" fill="#2a2552" stroke="#8b7cf6" stroke-width="1.8"/>
+<text x="287.5" y="1102.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Operator</text>
+<text x="287.5" y="1120.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Edits the thesis in Settings;</text>
+<text x="287.5" y="1134.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">opens the dashboard</text>
+<rect x="1360.0" y="1080.0" width="205" height="80" rx="10" fill="#4a2a1a" stroke="#e8895a" stroke-width="2.2" stroke-dasharray="6 4"/>
+<text x="1462.5" y="1102.0" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Human review</text>
+<text x="1462.5" y="1120.0" text-anchor="middle" fill="#d3d9e8" font-size="11.5">Edit, approve or reject; mark as</text>
+<text x="1462.5" y="1134.5" text-anchor="middle" fill="#d3d9e8" font-size="11.5">sent manually</text>
+</svg></div><div class="lgs"><span class="lg"><i style="background:#2a2552;border-color:#8b7cf6"></i>Trigger / actor</span><span class="lg"><i style="background:#13304d;border-color:#4aa3e8"></i>Input data</span><span class="lg"><i style="background:#12362a;border-color:#3fbf7f"></i>Context</span><span class="lg"><i style="background:#3d3112;border-color:#e0b43a"></i>Backend processing</span><span class="lg"><i style="background:#3d1737;border-color:#e85fa8"></i>Gemini Flash call</span><span class="lg"><i style="background:#4a2a1a;border-color:#e8895a"></i>Output</span><span class="lg"><i style="background:#4a2a1a;border:2px dashed #e8895a"></i>Rejected / skipped / human step</span></div></body></html>
