@@ -11,6 +11,16 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // The app used to mirror the pipeline (Dashboard / Feed / Qualified / Sources). Old deep links keep working.
+  async redirects() {
+    return [
+      { source: "/dashboard", destination: "/today", permanent: true },
+      { source: "/feed", destination: "/opportunities?view=discoveries", permanent: true },
+      { source: "/qualified", destination: "/opportunities", permanent: true },
+      { source: "/sources", destination: "/settings/discovery", permanent: true },
+      { source: "/startups/:id", destination: "/opportunities/:id", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

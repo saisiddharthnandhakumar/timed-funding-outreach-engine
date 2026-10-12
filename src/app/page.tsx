@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { configured, dashboardData } from "@/lib/queries";
+import { configured, landingStats } from "@/lib/queries";
 import { timeAgo } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -24,9 +24,7 @@ const FEATURES = [
 async function liveStats() {
   if (!configured()) return null;
   try {
-    const d = await dashboardData();
-    const last = d.runs[0] as { started_at?: string } | undefined;
-    return { articles: d.articles, events: d.events, qualified: d.qualified, drafts: d.drafts, lastRun: last?.started_at ?? null, health: d.health.label };
+    return await landingStats();
   } catch {
     return null;
   }
@@ -57,8 +55,8 @@ export default async function Landing() {
         <nav className="flex items-center gap-3">
           <a href="#how" className="hidden text-sm text-slate-600 hover:text-slate-900 sm:block">How it works</a>
           <ThemeToggle />
-          <Link href="/dashboard" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-indigo-600 dark:hover:bg-indigo-500">
-            Open dashboard
+          <Link href="/today" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-indigo-600 dark:hover:bg-indigo-500">
+            Open the app
           </Link>
         </nav>
       </header>
@@ -76,8 +74,8 @@ export default async function Landing() {
             The Timed Funding Outreach Engine watches Indian startup news, finds new pre-seed and seed rounds, checks them against your accelerator thesis, researches the ones that fit and leaves a personalised draft waiting for you.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-4">
-            <Link href="/dashboard" className="group inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-500">
-              Go to the dashboard
+            <Link href="/today" className="group inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-500">
+              Open your briefing
               <svg className="transition group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             </Link>
             <a href="#how" className="text-sm font-medium text-slate-700 hover:text-slate-900">See how it works →</a>
@@ -132,7 +130,7 @@ export default async function Landing() {
               ["Funding events", stats.events],
               ["Qualified", stats.qualified],
               ["Drafts ready", stats.drafts],
-              ["Pipeline", stats.health],
+              ["System", stats.healthText.split(" · ")[0]],
             ].map(([label, value]) => (
               <div key={label as string} className="bg-white p-5">
                 <div className="text-2xl font-semibold text-slate-900">{value}</div>
@@ -140,7 +138,7 @@ export default async function Landing() {
               </div>
             ))}
           </div>
-          <p className="mt-2 text-right text-xs text-slate-400">Live from the database{stats.lastRun ? ` · last run ${timeAgo(stats.lastRun)}` : ""}</p>
+          <p className="mt-2 text-right text-xs text-slate-400">Live from the database{stats.lastRunAt ? ` · last run ${timeAgo(stats.lastRunAt)}` : ""}</p>
         </section>
       )}
 
@@ -182,8 +180,8 @@ export default async function Landing() {
       {/* CTA */}
       <section className="relative mx-auto max-w-6xl px-6 py-24 text-center">
         <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Start the morning with drafts, not a spreadsheet.</h2>
-        <Link href="/dashboard" className="mt-8 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 hover:bg-indigo-500">
-          Open the dashboard
+        <Link href="/today" className="mt-8 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 hover:bg-indigo-500">
+          Open your briefing
         </Link>
       </section>
 

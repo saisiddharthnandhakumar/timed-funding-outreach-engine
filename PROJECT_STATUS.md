@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-10-12_
+_Last updated: 2026-10-12 (UI redesign)_
 
 ## Current Phase
 
@@ -33,7 +33,7 @@ Implemented in code, **not yet committed, migrated or deployed**:
 - [x] Lock-loser returns `{status:"skipped", reason:"already_running"}` with no run row, source polling or Gemini calls
 - [x] Lock released in `finally`; lease expires by itself if an instance dies (TTL = run deadline + 75 s)
 - [x] Stale-run handling: when a run takes the lock, leftover `running` rows are marked `failed` with a `stale_run` error
-- [x] Dashboard **Pipeline Health** card (last success, time since, ~2 h cadence, Healthy/Delayed/Warning, latest failure)
+- [x] **Pipeline health** (last success, time since, ~2 h cadence, Healthy/Delayed/Warning, latest failure): now a one-line indicator with a details sheet (see UI redesign below)
 - [x] README + components map document Hobby-plan scheduling (Vercel daily anchor, GitHub Actions 2-hourly, GitHub delays, manual run)
 - [ ] **Apply the migration to Supabase** (declined during the session; must be applied before this code is deployed)
 - [ ] Re-run integration tests + `tests/integration/pipeline-lock.test.ts` against the migrated DB
@@ -42,22 +42,38 @@ Implemented in code, **not yet committed, migrated or deployed**:
 ## UI changes (2026-10-12)
 
 - [x] Dark/light mode toggle (saved in localStorage, defaults to OS preference, no flash)
-- [x] Public landing page at `/`; dashboard moved to `/dashboard`; app pages in the `(app)` route group
+- [x] Public landing page at `/`; app pages in the `(app)` route group (the old `/dashboard` is now `/today`)
 - [x] Password login removed (`proxy.ts`, `/login`, `ADMIN_PASSWORD` gone from code, env example and push script). **The app is now open to anyone with the URL** (cron endpoint still needs `CRON_SECRET`)
 - [ ] Redeploy needed; `ADMIN_PASSWORD` can be deleted from Vercel env vars
+
+## UI redesign: scout workflow (2026-10-12) — implemented, NOT yet committed or deployed
+
+Information architecture first, then screen hierarchy, then visual polish. No backend, pipeline, scoring, schema or Gmail/Resend code changed.
+
+- [x] Navigation reduced to **Today · Opportunities · Drafts · Settings** (sidebar on desktop, bottom tab bar below 1024 px)
+- [x] `/today` morning briefing; `/opportunities` (Active + Discoveries, status chips, Filters); `/opportunities/[id]` decision story; `/drafts` + `/drafts/[id]`; `/settings` (Investment Thesis, Discovery, Integrations, System)
+- [x] Old routes redirect (308): `/dashboard`, `/feed`, `/qualified`, `/sources`, `/startups/:id`
+- [x] Always-on one-line system health with a details sheet; ⌘K search; humanised statuses; empty, loading, error and not-found states
+- [x] Send now confirms in a native dialog (To, From, Subject; Cancel focused); Reject and Mark-as-sent also confirm
+- [x] Docs: `docs/ui-redesign-audit.md`, `docs/ui-redesign-plan.md`, `docs/ui-functionality-matrix.md` (with honest verification status), README, `docs/components-map.md`
+- [x] `npm run check` passes (lint, typecheck, 144 tests, production build)
+- [ ] **Not exercised against production** (they write to the live database or send): manual pipeline run, thesis Save, source pause/resume, contact re-run, draft approve / edit / send / reject / mark sent. See the matrix.
+- [ ] The live database has no funding rounds, qualified startups or drafts right now, so Today, Opportunities and Drafts were checked live only in their empty states; populated states were checked with throwaway fixture data (not committed).
+- [ ] **No login exists** (removed earlier). Anyone with the URL can reach Send. Restore auth before real sending.
+- [ ] Not committed: review the diff, then commit and redeploy.
 
 ## Contact discovery (2026-10-12) — implemented, NOT yet migrated/deployed
 
 - [x] `src/lib/contacts/*` (crawler, extraction, attribution, GitHub, grounded search, patterns, verification, ranking, storage, budget), integrated after qualification and as a per-run backfill
 - [x] Migration `20261012000006_contact_enrichment.sql` written (**not applied**)
-- [x] UI: contact card on startup page (copy, re-run), Contact column on Qualified; CLI `npm run contacts`
+- [x] UI: contact card on startup page (copy, re-run), contact details inside the startup page's Outreach section; CLI `npm run contacts`
 - [x] 33 mocked tests (all 10 specified scenarios) + one live crawl smoke test against a real public site
 - [ ] Apply migration to Supabase, then deploy. Until applied, contact steps log errors (runs show `partial`) and the new UI sections stay empty
 - [ ] Live end-to-end contact run on a real qualified startup (needs the migration and the Gemini key)
 
 ## Live progress panel (2026-10-12) — implemented, NOT yet migrated/committed
 
-- [x] `ProgressTracker` + instrumentation of every pipeline stage, `/api/pipeline/progress`, dashboard panel with per-stage bars
+- [x] `ProgressTracker` + instrumentation of every pipeline stage, `/api/pipeline/progress`, per-stage bars on Settings → System
 - [x] Migration `20261012000007_pipeline_progress.sql` written (**not applied**); 8 unit tests
 - [ ] Apply migration, run the pipeline once and watch the panel on a real run
 

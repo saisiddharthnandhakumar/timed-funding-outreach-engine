@@ -102,3 +102,7 @@ export async function mapLimit<T, R>(
 }
 
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** True for a canonical UUID string. Used to turn a malformed URL id into a 404 instead of a database error. */
+export const isUuid = (v: string): boolean => UUID.test(v);

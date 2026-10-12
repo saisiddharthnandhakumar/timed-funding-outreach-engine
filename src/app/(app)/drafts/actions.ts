@@ -17,12 +17,20 @@ const EditSchema = z.object({
 
 const EDITABLE = ["generated", "draft_created", "approved"];
 
+/** Everything that shows draft state: the queue, the review view, Today and the opportunity list. */
+function revalidateDraftViews(id?: string) {
+  revalidatePath("/drafts");
+  if (id) revalidatePath(`/drafts/${id}`);
+  revalidatePath("/today");
+  revalidatePath("/opportunities");
+}
+
 export async function updateDraft(formData: FormData) {
   const parsed = EditSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   const { id, ...rest } = parsed.data;
   await db().from("outreach").update(rest).eq("id", id).in("status", EDITABLE);
-  revalidatePath("/drafts");
+  revalidateDraftViews(id);
 }
 
 const TRANSITIONS: Record<string, string[]> = {
@@ -42,7 +50,7 @@ export async function setDraftStatus(formData: FormData) {
     .update({ status: to, ...(to === "sent" ? { sent_at: new Date().toISOString() } : {}) })
     .eq("id", id.data)
     .in("status", TRANSITIONS[to]);
-  revalidatePath("/drafts");
+  revalidateDraftViews(id.data);
 }
 
 /** The Send button: one approved draft, one human click, sent through Resend. */
@@ -54,7 +62,7 @@ export async function sendDraftEmail(draftId: string): Promise<{ ok: boolean; me
     { store: new SupabaseSendStore(), config: { apiKey: e.RESEND_API_KEY, fromEmail: e.RESEND_FROM_EMAIL, fromName: e.RESEND_FROM_NAME ?? e.OUTREACH_SENDER_NAME, replyTo: e.RESEND_REPLY_TO } },
     id.data,
   );
-  revalidatePath("/drafts");
+  revalidateDraftViews(id.data);
   if (!result.ok) return { ok: false, message: result.message };
   return { ok: true, message: result.warning ?? "Email sent." };
 }

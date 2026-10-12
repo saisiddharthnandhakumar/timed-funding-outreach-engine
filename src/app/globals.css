@@ -5,7 +5,7 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
-  --surface: #ffffff;
+  --landing-surface: #ffffff;
 }
 
 @theme inline {
@@ -30,7 +30,7 @@ body {
   color-scheme: dark;
   --background: #0b1120;
   --foreground: #e2e8f0;
-  --surface: #111a2e;
+  --landing-surface: #111a2e;
 
   --color-slate-50: #162036;
   --color-slate-100: #1b2742;
@@ -60,9 +60,97 @@ body {
   --color-indigo-50: #1d2150;
   --color-indigo-700: #a5b4fc;
 }
-.dark .bg-white { background-color: var(--surface); }
-.dark input, .dark select, .dark textarea { background-color: var(--surface); color: var(--foreground); }
-.dark ::placeholder { color: #64748b; }
+.dark .bg-white { background-color: var(--landing-surface); }
+.dark input, .dark select, .dark textarea { background-color: var(--surface); color: var(--ink); }
+.dark ::placeholder { color: var(--faint); }
+
+
+/*
+ * App design tokens (scouting workspace). Calm warm-neutral surfaces, charcoal text, one accent.
+ * Pages use these through utilities: bg-canvas bg-surface text-ink text-muted text-faint border-line
+ * border-field text-accent bg-accent bg-accent-soft and the ok / warn / bad status tones.
+ * The landing page keeps its own slate palette (remapped for dark mode below).
+ */
+:root {
+  --canvas: #fafaf9;
+  --surface: #ffffff;
+  --sunken: #f5f5f4;
+  --ink: #1c1917;
+  --muted: #57534e;
+  --faint: #6f6a65;
+  --line: #e7e5e4;
+  --field: #8a8580;
+  --accent: #3446c9;
+  --accent-hover: #2b3aa8;
+  --accent-soft: #eef0fd;
+  --on-accent: #ffffff;
+  --ok: #17714a;
+  --ok-soft: #e8f5ee;
+  --warn: #8a5a05;
+  --warn-soft: #fbf1dc;
+  --bad: #b3261e;
+  --bad-soft: #fcebea;
+}
+.dark {
+  --canvas: #121110;
+  --surface: #1b1a19;
+  --sunken: #232120;
+  --ink: #f5f5f4;
+  --muted: #c4bfba;
+  --faint: #a29c96;
+  --line: #2f2d2b;
+  --field: #77716b;
+  --accent: #98a5ff;
+  --accent-hover: #b0baff;
+  --accent-soft: #1f2347;
+  --on-accent: #0f1230;
+  --ok: #5fd29c;
+  --ok-soft: #12291f;
+  --warn: #e3b04f;
+  --warn-soft: #2d2410;
+  --bad: #f19189;
+  --bad-soft: #321a18;
+}
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-field: var(--field);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+}
+
+/* Shared behaviours */
+html { scroll-padding-top: 4.5rem; scroll-padding-bottom: calc(7rem + env(safe-area-inset-bottom)); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+summary { list-style: none; }
+summary::-webkit-details-marker { display: none; }
+dialog::backdrop { background: rgb(15 14 13 / 0.45); }
+dialog { overscroll-behavior: contain; }
+@media (prefers-reduced-motion: no-preference) {
+  details[open] > .disclosure-body { animation: fade-in 0.18s ease-out; }
+  @keyframes fade-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.skeleton {
+  background: linear-gradient(90deg, var(--sunken) 25%, var(--line) 50%, var(--sunken) 75%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: no-preference) { .skeleton { animation: shimmer 1.6s linear infinite; } }
 
 /* Landing page decoration */
 .landing-glow {
@@ -80,3 +168,5 @@ body {
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .rise { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 @media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
+
+.app-body { background: var(--canvas); color: var(--ink); }

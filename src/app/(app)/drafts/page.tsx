@@ -1,65 +1,80 @@
+import Link from "next/link";
 import { draftsData, configured } from "@/lib/queries";
-import { Card, PageHeader, ScorePill, SetupNotice, StartupLink, StatusBadge } from "@/components/ui";
-import { formatAmount, stageLabel, timeAgo } from "@/lib/format";
-import { SendDraftButton } from "@/components/send-draft-button";
-import { env } from "@/lib/env";
-import { formatFrom, sendConfigProblem } from "@/lib/outreach/send";
-import { setDraftStatus, updateDraft } from "./actions";
+import { DraftStatus } from "@/components/opportunity/parts";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader, SetupNotice } from "@/components/ui";
+import { ago, plural } from "@/lib/format";
+import { draftState } from "@/lib/labels";
 
 export const dynamic = "force-dynamic";
 
-const btn = "rounded-md border px-3 py-1.5 text-xs font-medium";
+const VIEWS = [
+  ["review", "To review"],
+  ["approved", "Approved"],
+  ["done", "Done"],
+] as const;
+type View = (typeof VIEWS)[number][0];
 
-export default async function DraftsPage() {
+const viewOf = (status: string): View => {
+  const s = draftState(status);
+  return s === "ready" ? "review" : s === "approved" ? "approved" : "done";
+};
+
+const EMPTY: Record<View, string> = {
+  review: "No drafts need review.",
+  approved: "No approved drafts are waiting to be sent.",
+  done: "Nothing sent or dismissed yet.",
+};
+
+export default async function DraftsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (!configured()) return <SetupNotice message="Supabase is not configured." />;
+  const sp = await searchParams;
+  const view: View = VIEWS.some(([k]) => k === sp.s) ? (sp.s as View) : "review";
   const drafts = await draftsData();
-  const e = env();
-  const sendConfig = { apiKey: e.RESEND_API_KEY, fromEmail: e.RESEND_FROM_EMAIL, fromName: e.RESEND_FROM_NAME ?? e.OUTREACH_SENDER_NAME, replyTo: e.RESEND_REPLY_TO };
-  const configProblem = sendConfigProblem(sendConfig);
+  const counts = { review: 0, approved: 0, done: 0 } as Record<View, number>;
+  for (const d of drafts) counts[viewOf(d.status)]++;
+  const list = drafts.filter((d) => viewOf(d.status) === view);
+  const now = new Date();
+
   return (
     <>
-      <PageHeader title="Drafts" subtitle="Personalised emails prepared for your review. Nothing is ever sent automatically. Approve and review a draft, then click Send yourself (or send it from your own mail client and mark it as sent)." />
-      {drafts.length === 0 && <p className="text-sm text-slate-500">No drafts yet.</p>}
-      <div className="space-y-5">
-        {drafts.map((d) => {
-          const editable = ["generated", "draft_created", "approved"].includes(d.status);
-          return (
-            <Card key={d.id}>
-              <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
-                <StartupLink id={d.startups.id} name={d.startups.name} />
-                <span className="text-slate-500">{stageLabel(d.funding_rounds?.stage)} · {formatAmount(d.funding_rounds?.amount, d.funding_rounds?.currency)}</span>
-                <ScorePill score={d.fit_assessments?.total_score} />
-                <StatusBadge status={d.status} />
-                <span className="text-xs text-slate-400">{d.draft_provider === "gmail" ? "Gmail draft" : "stored in app only"} · {timeAgo(d.created_at)}</span>
+      <PageHeader title="Drafts" subtitle={counts.review > 0 ? `${counts.review} ready for review` : "Nothing is waiting for review"} />
+      <nav aria-label="Draft status" className="mb-6 flex gap-6 border-b border-line">
+        {VIEWS.map(([k, label]) => (
+          <Link key={k} href={k === "review" ? "/drafts" : `/drafts?s=${k}`} aria-current={view === k ? "page" : undefined} className={`-mb-px min-h-11 border-b-2 px-1 pb-3 pt-1 text-sm font-medium ${view === k ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"}`}>
+            {label} <span className="num text-faint">{counts[k]}</span>
+          </Link>
+        ))}
+      </nav>
+
+      {list.length === 0 ? (
+        <EmptyState title={EMPTY[view]}>{view === "review" && <p>New drafts are prepared automatically for startups that meet your thesis. Nothing is ever sent without you.</p>}</EmptyState>
+      ) : (
+        <ul className="divide-y divide-line">
+          {list.map((d) => (
+            <li key={d.id} className="relative py-5 first:pt-0">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h2 className="text-[1.05rem] font-semibold tracking-tight text-ink">{d.startups?.name}</h2>
+                  <p className="mt-1 text-sm text-muted">{d.recipient_name ? `Founder: ${d.recipient_name}` : "No recipient yet"}</p>
+                  <p className="mt-0.5 truncate text-sm text-muted">Subject: {d.subject}</p>
+                  <p className="mt-1.5 text-xs text-faint">
+                    {draftState(d.status) === "sent" && d.sent_at ? `Sent ${ago(d.sent_at, now)}` : `Generated ${ago(d.created_at, now)}`}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <Link href={`/drafts/${d.id}`} className="inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-accent after:absolute after:inset-0 after:content-[''] hover:underline">
+                    {view === "review" ? "Review" : "Open"} <span aria-hidden="true">→</span>
+                    <span className="sr-only"> draft for {d.startups?.name}</span>
+                  </Link>
+                  {view !== "review" && <DraftStatus state={draftState(d.status)} />}
+                </div>
               </div>
-              <form action={updateDraft} className="space-y-3">
-                <input type="hidden" name="id" value={d.id} />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <input name="recipient_name" defaultValue={d.recipient_name ?? ""} placeholder="Recipient name" disabled={!editable} className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50" />
-                  <input name="recipient_email" defaultValue={d.recipient_email ?? ""} placeholder="Recipient email (add before sending)" disabled={!editable} className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50" />
-                </div>
-                <input name="subject" defaultValue={d.subject} disabled={!editable} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-medium disabled:bg-slate-50" />
-                <textarea name="body" defaultValue={d.body} rows={11} disabled={!editable} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm leading-relaxed disabled:bg-slate-50" />
-                {editable && <button className={`${btn} border-slate-300 text-slate-700 hover:bg-slate-50`}>Save edits</button>}
-              </form>
-              {d.status === "sent" && d.sent_at && <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">Sent {timeAgo(d.sent_at)}{d.recipient_email ? ` to ${d.recipient_email}` : ""}.</p>}
-              {d.status !== "sent" && d.status !== "rejected" && d.status !== "cancelled" && (
-                <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-                  {d.status !== "approved" && <form action={setDraftStatus}><input type="hidden" name="id" value={d.id} /><input type="hidden" name="to" value="approved" /><button className={`${btn} border-emerald-300 bg-emerald-50 text-emerald-800`}>Approve</button></form>}
-                  <SendDraftButton
-                    draftId={d.id}
-                    to={d.recipient_email}
-                    from={formatFrom(sendConfig)}
-                    blockedReason={configProblem ?? (d.status !== "approved" ? "Approve the draft to enable sending." : !d.recipient_email ? "Add a recipient email and save." : null)}
-                  />
-                  <form action={setDraftStatus}><input type="hidden" name="id" value={d.id} /><input type="hidden" name="to" value="sent" /><button className={`${btn} border-slate-300 text-slate-700`}>Mark as sent (I sent it myself)</button></form>
-                  <form action={setDraftStatus}><input type="hidden" name="id" value={d.id} /><input type="hidden" name="to" value="rejected" /><button className={`${btn} border-rose-300 text-rose-700`}>Reject</button></form>
-                </div>
-              )}
-            </Card>
-          );
-        })}
-      </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {list.length > 0 && view === "review" && <p className="mt-6 text-sm text-faint">{plural(list.length, "draft")} · newest first</p>}
     </>
   );
 }

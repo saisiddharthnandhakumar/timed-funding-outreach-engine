@@ -9,5 +9,6 @@ export async function toggleSource(formData: FormData) {
   if (!id.success) return;
   const enabled = formData.get("enabled") === "true";
   await db().from("sources").update({ enabled }).eq("id", id.data);
-  revalidatePath("/sources");
+  revalidatePath("/settings/discovery");
+  revalidatePath("/settings/system");
 }

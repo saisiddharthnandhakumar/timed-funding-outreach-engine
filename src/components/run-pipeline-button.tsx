@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { btn } from "./ui";
 
-export function RunPipelineButton() {
+/** Starts a scan. The run continues server-side; the scan status (friendly) and System page (technical) show progress. */
+export function RunPipelineButton({ variant = "secondary", label = "Scan now" }: { variant?: "primary" | "secondary"; label?: string }) {
   const router = useRouter();
   const [state, setState] = useState<"idle" | "starting" | "started" | "error">("idle");
 
@@ -14,7 +16,7 @@ export function RunPipelineButton() {
       if (!res.ok) throw new Error(String(res.status));
       setState("started");
       window.dispatchEvent(new Event("pipeline-run-started"));
-      // The run continues server-side; refresh a few times so progress shows up.
+      // Refresh a few times so new opportunities show up as the scan advances.
       for (const ms of [8_000, 25_000, 60_000]) setTimeout(() => router.refresh(), ms);
     } catch {
       setState("error");
@@ -22,16 +24,14 @@ export function RunPipelineButton() {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      {state === "started" && <span className="text-xs text-slate-500">Run started — watch the progress panel below.</span>}
-      {state === "error" && <span className="text-xs text-rose-600">Could not start the run.</span>}
-      <button
-        onClick={run}
-        disabled={state === "starting"}
-        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-      >
-        {state === "starting" ? "Starting…" : "Run pipeline now"}
+    <div className="flex flex-wrap items-center gap-3">
+      <button type="button" onClick={run} disabled={state === "starting"} className={btn[variant]}>
+        {state === "starting" ? "Starting…" : label}
       </button>
+      <span role="status" className="text-sm text-muted">
+        {state === "started" && "Scan started. This takes a few minutes."}
+        {state === "error" && <span className="text-bad">Couldn’t start the scan. Try again.</span>}
+      </span>
     </div>
   );
 }

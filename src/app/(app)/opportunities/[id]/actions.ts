@@ -13,8 +13,8 @@ export async function rerunContactEnrichment(startupId: string): Promise<{ messa
   if (!id.success) return { message: "Invalid startup id." };
   try {
     const o = await enrichOne(getAI(), id.data, { force: true });
-    revalidatePath(`/startups/${id.data}`);
-    revalidatePath("/qualified");
+    revalidatePath(`/opportunities/${id.data}`);
+    revalidatePath("/opportunities");
     if (o.status === "failed") return { message: `Contact search failed: ${o.warnings[0] ?? "see pipeline events"}` };
     return { message: o.preferredEmail ? `Found ${o.preferredEmail}` : o.preferredType === "contact_form" ? "Only a public contact form was found." : "No reliable contact found." };
   } catch (err) {

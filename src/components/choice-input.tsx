@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CUSTOM_LABEL_PATTERN } from "@/lib/thesis/options";
+import { btn, field } from "./ui";
 
 /**
- * Multi-select dropdown. Values can only be added by picking from `options`;
- * when `allowCustom` is set, a validated "Add custom" entry is offered as well.
+ * Multi-select. Selected values are chips with their own remove buttons; "Add" opens a searchable list.
+ * Values can only be added by picking from `options`; with `allowCustom`, a validated custom entry is offered too.
  */
 export function ChoiceInput({
-  label, hint, options, value, onChange, allowCustom = false, placeholder = "Select…",
+  label, hint, options, value, onChange, allowCustom = false, placeholder = "None selected", addLabel = "Add", autoFocusTrigger = false,
 }: {
   label: string;
   hint?: string;
@@ -17,20 +18,39 @@ export function ChoiceInput({
   onChange: (v: string[]) => void;
   allowCustom?: boolean;
   placeholder?: string;
+  addLabel?: string;
+  autoFocusTrigger?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [custom, setCustom] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const id = useId();
 
   useEffect(() => {
+    if (autoFocusTrigger) trigger.current?.focus();
+  }, [autoFocusTrigger]);
+
+  useEffect(() => {
+    if (!open) return;
     const close = (e: MouseEvent) => {
       if (root.current && !root.current.contains(e.target as Node)) setOpen(false);
     };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        trigger.current?.focus();
+      }
+    };
     document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, []);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
 
   const filtered = useMemo(() => options.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase())), [options, query]);
   const has = (v: string) => value.some((x) => x.toLowerCase() === v.toLowerCase());
@@ -48,80 +68,56 @@ export function ChoiceInput({
 
   return (
     <div ref={root} className="relative">
-      <label className="text-sm font-medium text-slate-800">{label}</label>
-      {hint && <p className="text-xs text-slate-500">{hint}</p>}
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="mt-1.5 flex min-h-[2.5rem] w-full flex-wrap items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-left text-sm"
-      >
-        {value.length === 0 && <span className="px-1 text-slate-400">{placeholder}</span>}
+      <div id={`${id}-label`} className="text-sm font-medium text-ink">{label}</div>
+      {hint && <p className="text-sm text-faint">{hint}</p>}
+      <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-labelledby={`${id}-label`}>
+        {value.length === 0 && <span className="text-sm text-faint">{placeholder}</span>}
         {value.map((v) => (
-          <span key={v} className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs text-indigo-700">
+          <span key={v} className="inline-flex min-h-9 items-center gap-1 rounded-full bg-sunken pl-3 pr-1 text-sm text-ink">
             {v}
-            {!options.includes(v) && <span className="rounded bg-slate-100 px-1 text-[10px] uppercase text-slate-600">custom</span>}
-            <span
-              role="button"
-              aria-label={`Remove ${v}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggle(v);
-              }}
-              className="cursor-pointer text-slate-400 hover:text-slate-700"
-            >
-              ×
-            </span>
+            {!options.includes(v) && <span className="text-xs text-faint">(custom)</span>}
+            <button type="button" aria-label={`Remove ${v}`} onClick={() => { toggle(v); trigger.current?.focus(); }} className="flex h-7 w-7 items-center justify-center rounded-full text-muted hover:bg-line hover:text-ink">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
           </span>
         ))}
-        <span className="ml-auto pr-1 text-slate-400">▾</span>
-      </button>
+        <button ref={trigger} type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls={`${id}-panel`} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-field px-3 text-sm font-medium text-muted hover:bg-sunken hover:text-ink">
+          <span aria-hidden="true">+</span> {addLabel}
+          <span className="sr-only"> to {label}</span>
+        </button>
+      </div>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-full rounded-md border border-slate-200 bg-white shadow-lg">
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search…"
-            className="w-full border-b border-slate-100 px-3 py-2 text-sm outline-none"
-          />
-          <ul className="max-h-60 overflow-auto py-1" role="listbox" aria-multiselectable>
-            {filtered.length === 0 && <li className="px-3 py-2 text-sm text-slate-400">No matches{allowCustom ? " — add it as custom below" : ""}</li>}
+        <div id={`${id}-panel`} className="absolute z-20 mt-2 w-full max-w-md rounded-xl border border-line bg-surface shadow-lg">
+          <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search…" aria-label={`Search ${label}`} className="w-full rounded-t-xl border-b border-line bg-transparent px-3 py-2.5 text-sm outline-none" />
+          <ul className="max-h-60 overflow-auto py-1">
+            {filtered.length === 0 && <li className="px-3 py-2 text-sm text-faint">No matches{allowCustom ? ". Add it as a custom entry below." : ""}</li>}
             {filtered.map((o) => (
               <li key={o}>
-                <label className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-slate-50">
-                  <input type="checkbox" checked={has(o)} onChange={() => toggle(o)} />
+                <label className="flex min-h-10 cursor-pointer items-center gap-2.5 px-3 text-sm text-ink hover:bg-sunken">
+                  <input type="checkbox" checked={has(o)} onChange={() => toggle(o)} className="h-4 w-4 accent-[var(--accent)]" />
                   {o}
                 </label>
               </li>
             ))}
           </ul>
           {allowCustom && (
-            <div className="border-t border-slate-100 p-2">
+            <div className="border-t border-line p-2.5">
               <div className="flex gap-2">
                 <input
                   value={custom}
-                  onChange={(e) => {
-                    setCustom(e.target.value);
-                    setCustomError(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addCustom();
-                    }
-                  }}
-                  placeholder="Not listed? Add a custom one"
-                  className="flex-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-indigo-500"
+                  aria-label={`Custom ${label}`}
+                  onChange={(e) => { setCustom(e.target.value); setCustomError(null); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+                  placeholder="Not listed? Add your own"
+                  className={`${field} flex-1`}
                 />
-                <button type="button" onClick={addCustom} className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700">
-                  Add
-                </button>
+                <button type="button" onClick={addCustom} className={btn.secondary}>Add</button>
               </div>
-              {customError && <p className="mt-1 text-xs text-rose-600">{customError}</p>}
+              {customError && <p role="alert" className="mt-1.5 text-sm text-bad">{customError}</p>}
             </div>
           )}
+          <div className="flex justify-end border-t border-line p-2"><button type="button" onClick={() => { setOpen(false); trigger.current?.focus(); }} className={btn.ghost}>Done</button></div>
         </div>
       )}
     </div>

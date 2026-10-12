@@ -77,3 +77,28 @@ export function computePipelineHealth(runs: RunLike[], now: Date = new Date()): 
   const label = level === "healthy" ? "Healthy" : level === "delayed" ? "Delayed" : "Warning";
   return { level, label, reason, lastSuccess, minutesSinceSuccess, running, latestFailure };
 }
+
+// Keep in sync with vercel.json (daily 03:30 UTC = 09:00 IST) and .github/workflows/pipeline-cron.yml (every 2 hours).
+export const SCHEDULE = {
+  vercel: { label: "Daily at 09:00 IST", cron: "30 3 * * *" },
+  github: { label: "About every 2 hours", cron: "15 */2 * * *" },
+} as const;
+
+/** The one-line, scout-facing health sentence. */
+export function describeHealth(h: Pick<PipelineHealth, "level" | "minutesSinceSuccess" | "running">): { level: HealthLevel; text: string } {
+  const since = h.minutesSinceSuccess == null ? null : compact(h.minutesSinceSuccess);
+  let text: string;
+  if (h.level === "healthy") text = `System healthy · Last scan ${since} ago`;
+  else if (h.level === "delayed") text = `Scan delayed · Last success ${since} ago`;
+  else text = since == null ? "Discovery issue · No successful scan yet" : `Discovery issue · Last success ${since} ago`;
+  if (h.running) text += " · Scanning now";
+  return { level: h.level, text };
+}
+
+function compact(minutes: number): string {
+  const m = Math.max(0, Math.round(minutes));
+  if (m < 1) return "under 1m";
+  if (m < 60) return `${m}m`;
+  const h = Math.round(m / 60);
+  return h < 48 ? `${h}h` : `${Math.round(h / 24)}d`;
+}

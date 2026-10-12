@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { rerunContactEnrichment } from "@/app/(app)/startups/[id]/actions";
+import { rerunContactEnrichment } from "@/app/(app)/opportunities/[id]/actions";
 
 export function RerunContactsButton({ startupId }: { startupId: string }) {
   const [pending, start] = useTransition();
