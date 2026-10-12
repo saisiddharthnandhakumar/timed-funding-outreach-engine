@@ -55,6 +55,30 @@ export async function feedData() {
   return { rounds: rounds as any[], filtered: filtered as any[] };
 }
 
+export async function qualifiedData() {
+  const assessments = unwrap(
+    await db()
+      .from("fit_assessments")
+      .select("id,total_score,qualified,positive_signals,assessed_at,thesis_version,startup_id,funding_round_id,startups(id,name,sector,subsector,enrichment_status),funding_rounds(stage,amount,currency,earliest_source_published_at)")
+      .eq("qualified", true)
+      .order("assessed_at", { ascending: false })
+      .limit(100),
+    "qualified",
+  ) as any[];
+  const ids = assessments.map((a) => a.startup_id);
+  const outreach = ids.length ? unwrap(await db().from("outreach").select("startup_id,status").in("startup_id", ids), "outreach status") as { startup_id: string; status: string }[] : [];
+  // Preferred contact per startup (empty until the contact-enrichment migration is applied).
+  let contactByStartup = new Map<string, { kind: string; email: string | null; contact_url: string | null; verification_status: string }>();
+  let contactStatusByStartup = new Map<string, string>();
+  if (ids.length) {
+    const st = await db().from("startups").select("id,contact_status").in("id", ids);
+    if (!st.error) contactStatusByStartup = new Map((st.data ?? []).map((r) => [r.id as string, r.contact_status as string]));
+    const res = await db().from("startup_contacts").select("startup_id,kind,email,contact_url,verification_status").in("startup_id", ids).eq("is_preferred", true);
+    if (!res.error) contactByStartup = new Map((res.data ?? []).map((c) => [c.startup_id as string, c as any]));
+  }
+  return { assessments, outreachByStartup: new Map(outreach.map((o) => [o.startup_id, o.status])), contactByStartup, contactStatusByStartup };
+}
+
 export async function startupDetail(id: string) {
   const startup = unwrap(await db().from("startups").select("*").eq("id", id).maybeSingle(), "startup");
   if (!startup) return null;
@@ -110,26 +134,4 @@ export async function thesisData() {
   const active = theses.find((t) => t.active) ?? null;
   const criteria = active ? unwrap(await db().from("scoring_criteria").select("*").eq("thesis_id", active.id).order("sort_order"), "criteria") as any[] : [];
   return { theses, active, criteria };
-}
-
-/** The most recent pipeline run, with live progress when the progress migration is applied. */
-export async function latestRun() {
-  let res = await db().from("pipeline_runs").select("id,status,trigger,started_at,completed_at,errors_json,progress_json").order("started_at", { ascending: false }).limit(1);
-  if (res.error) res = (await db().from("pipeline_runs").select("id,status,trigger,started_at,completed_at,errors_json").order("started_at", { ascending: false }).limit(1)) as typeof res;
-  return (res.data?.[0] ?? null) as import("@/components/pipeline-progress").RunView | null;
-}
-
-/** One draft with what the reading surface needs: startup, round, assessment, and how the recipient address was verified. */
-export async function draftDetail(id: string) {
-  const o = unwrap(
-    await db().from("outreach").select("*,startups(id,name,research_sources),funding_rounds(stage,amount,currency,earliest_source_published_at),fit_assessments(total_score)").eq("id", id).maybeSingle(),
-    "draft",
-  ) as any;
-  if (!o) return null;
-  let recipientVerification: string | null = null;
-  if (o.recipient_email) {
-    const r = await db().from("startup_contacts").select("verification_status").eq("startup_id", o.startup_id).eq("email", String(o.recipient_email).toLowerCase()).maybeSingle();
-    if (!r.error) recipientVerification = (r.data?.verification_status as string | undefined) ?? null;
-  }
-  return { ...o, recipientVerification } as any;
 }

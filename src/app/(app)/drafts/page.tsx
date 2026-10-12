@@ -1,71 +1,65 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { SegmentedControl } from "@/components/segmented-control";
-import { EmptyState, PageHeader, SetupNotice, StatusLabel, buttonClass } from "@/components/ui";
+import { draftsData, configured } from "@/lib/queries";
+import { Card, PageHeader, ScorePill, SetupNotice, StartupLink, StatusBadge } from "@/components/ui";
 import { formatAmount, stageLabel, timeAgo } from "@/lib/format";
-import { draftLabel } from "@/lib/labels";
-import { configured, draftsData } from "@/lib/queries";
+import { SendDraftButton } from "@/components/send-draft-button";
+import { env } from "@/lib/env";
+import { formatFrom, sendConfigProblem } from "@/lib/outreach/send";
+import { setDraftStatus, updateDraft } from "./actions";
 
-export const metadata: Metadata = { title: "Drafts" };
 export const dynamic = "force-dynamic";
 
-type Filter = "review" | "approved" | "sent" | "all";
-const GROUPS: Record<Filter, string[] | null> = { review: ["generated", "draft_created"], approved: ["approved"], sent: ["sent"], all: null };
-const OPTIONS: { value: Filter; label: string }[] = [
-  { value: "review", label: "To review" },
-  { value: "approved", label: "Approved" },
-  { value: "sent", label: "Sent" },
-  { value: "all", label: "All" },
-];
+const btn = "rounded-md border px-3 py-1.5 text-xs font-medium";
 
-export default async function DraftsPage({ searchParams }: { searchParams: Promise<{ f?: string }> }) {
+export default async function DraftsPage() {
   if (!configured()) return <SetupNotice message="Supabase is not configured." />;
-  const { f: raw } = await searchParams;
-  const f: Filter = OPTIONS.some((o) => o.value === raw) ? (raw as Filter) : "review";
   const drafts = await draftsData();
-  const now = new Date();
-
-  const inGroup = (status: string, g: Filter) => GROUPS[g] === null || GROUPS[g]!.includes(status);
-  const counts = Object.fromEntries(OPTIONS.map((o) => [o.value, drafts.filter((d) => inGroup(d.status, o.value)).length])) as Record<Filter, number>;
-  const list = drafts.filter((d) => inGroup(d.status, f));
-
+  const e = env();
+  const sendConfig = { apiKey: e.RESEND_API_KEY, fromEmail: e.RESEND_FROM_EMAIL, fromName: e.RESEND_FROM_NAME ?? e.OUTREACH_SENDER_NAME, replyTo: e.RESEND_REPLY_TO };
+  const configProblem = sendConfigProblem(sendConfig);
   return (
     <>
-      <PageHeader title="Drafts" description="Personalised emails, ready for your review. Nothing is ever sent without you." />
-      <div className="mb-6">
-        <SegmentedControl label="Show" options={OPTIONS.map((o) => ({ ...o, count: counts[o.value] }))} current={f} hrefFor={(v) => (v === "review" ? "/drafts" : `/drafts?f=${v}`)} />
+      <PageHeader title="Drafts" subtitle="Personalised emails prepared for your review. Nothing is ever sent automatically. Approve and review a draft, then click Send yourself (or send it from your own mail client and mark it as sent)." />
+      {drafts.length === 0 && <p className="text-sm text-slate-500">No drafts yet.</p>}
+      <div className="space-y-5">
+        {drafts.map((d) => {
+          const editable = ["generated", "draft_created", "approved"].includes(d.status);
+          return (
+            <Card key={d.id}>
+              <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
+                <StartupLink id={d.startups.id} name={d.startups.name} />
+                <span className="text-slate-500">{stageLabel(d.funding_rounds?.stage)} · {formatAmount(d.funding_rounds?.amount, d.funding_rounds?.currency)}</span>
+                <ScorePill score={d.fit_assessments?.total_score} />
+                <StatusBadge status={d.status} />
+                <span className="text-xs text-slate-400">{d.draft_provider === "gmail" ? "Gmail draft" : "stored in app only"} · {timeAgo(d.created_at)}</span>
+              </div>
+              <form action={updateDraft} className="space-y-3">
+                <input type="hidden" name="id" value={d.id} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input name="recipient_name" defaultValue={d.recipient_name ?? ""} placeholder="Recipient name" disabled={!editable} className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50" />
+                  <input name="recipient_email" defaultValue={d.recipient_email ?? ""} placeholder="Recipient email (add before sending)" disabled={!editable} className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50" />
+                </div>
+                <input name="subject" defaultValue={d.subject} disabled={!editable} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-medium disabled:bg-slate-50" />
+                <textarea name="body" defaultValue={d.body} rows={11} disabled={!editable} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm leading-relaxed disabled:bg-slate-50" />
+                {editable && <button className={`${btn} border-slate-300 text-slate-700 hover:bg-slate-50`}>Save edits</button>}
+              </form>
+              {d.status === "sent" && d.sent_at && <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">Sent {timeAgo(d.sent_at)}{d.recipient_email ? ` to ${d.recipient_email}` : ""}.</p>}
+              {d.status !== "sent" && d.status !== "rejected" && d.status !== "cancelled" && (
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                  {d.status !== "approved" && <form action={setDraftStatus}><input type="hidden" name="id" value={d.id} /><input type="hidden" name="to" value="approved" /><button className={`${btn} border-emerald-300 bg-emerald-50 text-emerald-800`}>Approve</button></form>}
+                  <SendDraftButton
+                    draftId={d.id}
+                    to={d.recipient_email}
+                    from={formatFrom(sendConfig)}
+                    blockedReason={configProblem ?? (d.status !== "approved" ? "Approve the draft to enable sending." : !d.recipient_email ? "Add a recipient email and save." : null)}
+                  />
+                  <form action={setDraftStatus}><input type="hidden" name="id" value={d.id} /><input type="hidden" name="to" value="sent" /><button className={`${btn} border-slate-300 text-slate-700`}>Mark as sent (I sent it myself)</button></form>
+                  <form action={setDraftStatus}><input type="hidden" name="id" value={d.id} /><input type="hidden" name="to" value="rejected" /><button className={`${btn} border-rose-300 text-rose-700`}>Reject</button></form>
+                </div>
+              )}
+            </Card>
+          );
+        })}
       </div>
-
-      {list.length === 0 ? (
-        <EmptyState
-          title={f === "review" ? "No drafts need review" : "No drafts here"}
-          action={f !== "all" && drafts.length > 0 ? <Link href="/drafts?f=all" className={buttonClass("secondary")}>See all drafts</Link> : undefined}
-        >
-          {f === "review" ? "New drafts appear here after each scan, for startups that fit your thesis." : "Nothing matches this view."}
-        </EmptyState>
-      ) : (
-        <ul className="divide-y divide-line border-y border-line" aria-label="Drafts">
-          {list.map((d) => {
-            const open = !["sent", "rejected", "cancelled"].includes(d.status);
-            return (
-              <li key={d.id} className="group relative -mx-4 flex items-start gap-4 rounded-lg px-4 py-4 hover:bg-sunken/70 sm:-mx-5 sm:px-5">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-heading text-ink"><Link href={`/drafts/${d.id}`} className="after:absolute after:inset-0 after:rounded-lg">{d.startups?.name ?? "Unknown startup"}</Link></h3>
-                  <p className="mt-0.5 truncate text-body text-ink-2">{d.subject}</p>
-                  <p className="mt-0.5 text-meta text-ink-3">
-                    {d.recipient_email ? <>To {d.recipient_name ? `${d.recipient_name} · ` : ""}{d.recipient_email}</> : open ? <span className="text-ink-2">No recipient email yet</span> : "No recipient"}
-                    {" · "}{[stageLabel(d.funding_rounds?.stage), d.funding_rounds?.amount != null ? formatAmount(d.funding_rounds.amount, d.funding_rounds.currency) : null].filter((x) => x && x !== "—").join(" · ")}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <StatusLabel label={draftLabel(d.status)} />
-                  <span className="text-meta text-ink-3">{d.status === "sent" && d.sent_at ? `Sent ${timeAgo(d.sent_at, now)}` : timeAgo(d.created_at, now)}</span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
     </>
   );
 }

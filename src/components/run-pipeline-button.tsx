@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { buttonClass } from "./ui";
 
-/** Starts a manual scan (same `POST /api/pipeline/run`). The run continues server-side; progress is shown by the scan banner. */
-export function RunPipelineButton({ variant = "secondary", label = "Scan now", className = "" }: { variant?: "secondary" | "primary" | "ghost"; label?: string; className?: string }) {
+export function RunPipelineButton() {
   const router = useRouter();
   const [state, setState] = useState<"idle" | "starting" | "started" | "error">("idle");
 
@@ -16,20 +14,24 @@ export function RunPipelineButton({ variant = "secondary", label = "Scan now", c
       if (!res.ok) throw new Error(String(res.status));
       setState("started");
       window.dispatchEvent(new Event("pipeline-run-started"));
-      // The run continues server-side; refresh a few times so new results show up.
-      for (const ms of [8_000, 25_000, 60_000, 120_000]) setTimeout(() => router.refresh(), ms);
-      setTimeout(() => setState("idle"), 90_000);
+      // The run continues server-side; refresh a few times so progress shows up.
+      for (const ms of [8_000, 25_000, 60_000]) setTimeout(() => router.refresh(), ms);
     } catch {
       setState("error");
     }
   }
 
   return (
-    <span className="inline-flex items-center gap-3">
-      {state === "error" && <span role="alert" className="text-meta text-bad">Couldn’t start the scan.</span>}
-      <button type="button" onClick={run} disabled={state === "starting" || state === "started"} className={buttonClass(variant, "md", className)}>
-        {state === "starting" ? "Starting…" : state === "started" ? "Scan started" : label}
+    <div className="flex items-center gap-3">
+      {state === "started" && <span className="text-xs text-slate-500">Run started — watch the progress panel below.</span>}
+      {state === "error" && <span className="text-xs text-rose-600">Could not start the run.</span>}
+      <button
+        onClick={run}
+        disabled={state === "starting"}
+        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+      >
+        {state === "starting" ? "Starting…" : "Run pipeline now"}
       </button>
-    </span>
+    </div>
   );
 }

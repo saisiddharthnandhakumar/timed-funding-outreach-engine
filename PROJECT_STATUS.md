@@ -1,6 +1,6 @@
 # Project Status
 
-_Last updated: 2026-10-12 (UI redesign)_
+_Last updated: 2026-10-12_
 
 ## Current Phase
 
@@ -39,20 +39,7 @@ Implemented in code, **not yet committed, migrated or deployed**:
 - [ ] Re-run integration tests + `tests/integration/pipeline-lock.test.ts` against the migrated DB
 - [ ] Commit, push, redeploy
 
-## UI redesign (2026-10-12) — implemented, NOT yet committed or deployed
-
-Frontend-only redesign around the scout's workflow; no backend, schema, pipeline or scoring changes. Docs: `docs/ui-redesign-audit.md`, `docs/ui-redesign-plan.md`, `docs/ui-functionality-matrix.md` (before/after matrix with how each capability was verified).
-
-- [x] New IA: **Today · Opportunities (+ startup detail) · Drafts (+ draft page) · Discoveries · Settings** (Investment thesis / Discovery / Integrations / System). Old routes redirect (`next.config.ts`).
-- [x] Design tokens (light/dark) in `globals.css`; Inter; one accent; hairlines instead of cards; collapsible sidebar, phone tab bar, ⌘K search, top-bar system chip + system sheet, progressive disclosure everywhere (score breakdown, evidence, system details, source technical details).
-- [x] Human status vocabulary (`lib/labels.ts`); source health (`lib/sources/health.ts`); five-step scan progress; derived “Why now / Recommended angle / Why this message” (facts only, nothing generated).
-- [x] Draft page: reading surface, sticky action bar (Approve → Send), accessible confirm dialogs, edit in place, Open in Gmail / Copy.
-- [x] 36 new unit tests (`tests/ui-*.test.ts`).
-- [ ] **Needs a real qualified startup to check Opportunities / startup page / draft page against live rows.** The live database currently has 0 startups, funding events, assessments and drafts (those screens were verified with throw-away fixtures, since removed). See the matrix “Gaps”.
-- [ ] Not exercised against production data: saving a thesis version, source toggle, approve/send/reject, contact re-run.
-- [ ] Commit, push, redeploy (Vercel).
-
-## UI changes earlier on 2026-10-12 (superseded by the redesign above)
+## UI changes (2026-10-12)
 
 - [x] Dark/light mode toggle (saved in localStorage, defaults to OS preference, no flash)
 - [x] Public landing page at `/`; dashboard moved to `/dashboard`; app pages in the `(app)` route group
@@ -96,9 +83,8 @@ Frontend-only redesign around the scout's workflow; no backend, schema, pipeline
 
 - `npm run lint`: PASS
 - `npm run typecheck`: PASS
-- `npm run build`: PASS (routes: `/`, `/today`, `/opportunities`, `/opportunities/[id]`, `/drafts`, `/drafts/[id]`, `/discoveries`, `/settings`, `/settings/{discovery,integrations,system}`, `/api/{search,system,cron/pipeline,pipeline/run,pipeline/progress}`)
-- `npm test`: 157 passed, 2 skipped (the 2 Postgres-direct suites need `SUPABASE_DB_URL`); includes the 3 fixture-integration tests
-- Manual scan from the new UI against the real project: completed, 0 errors
+- `npm run build`: PASS
+- `npm test`: unit tests PASS (incl. new `pipeline-health.test.ts`); 3 fixture-integration tests FAIL only because the lock functions don't exist in the database yet; 2 Postgres-direct suites skipped (no `SUPABASE_DB_URL`)
 - Lock behaviour in Postgres: **not yet verified** (migration unapplied)
 - Production (last verified 2026-10-11): login, pages, cron auth and manual run OK on the previously deployed version
 
