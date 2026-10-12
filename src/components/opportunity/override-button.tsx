@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { pursueFilteredRound } from "@/app/(app)/opportunities/override-actions";
+import { pursueFiltered } from "@/app/(app)/opportunities/override-actions";
 import { btn } from "@/components/ui";
 
 /** Lets the scout pull a filtered-out announcement back in; research, scoring and a draft follow. */
-export function OverrideButton({ roundId }: { roundId: string }) {
+export function OverrideButton({ kind, id }: { kind: "round" | "article"; id: string }) {
   const [pending, start] = useTransition();
   const [result, setResult] = useState<{ ok: boolean; message: string; startupId?: string } | null>(null);
 
@@ -24,8 +24,8 @@ export function OverrideButton({ roundId }: { roundId: string }) {
         type="button"
         disabled={pending}
         onClick={() => {
-          if (!window.confirm("Pursue this startup anyway? We’ll research it, find contacts and write a draft, even though it didn’t pass your thesis.")) return;
-          start(async () => setResult(await pursueFilteredRound(roundId)));
+          if (!window.confirm((kind === "article" ? "Pursue this anyway? We’ll work out which startup it’s about, research it, find contacts and write a draft, even though it didn’t pass your thesis." : "Pursue this startup anyway? We’ll research it, find contacts and write a draft, even though it didn’t pass your thesis."))) return;
+          start(async () => setResult(await pursueFiltered(kind, id)));
         }}
         className={btn.secondary}
       >

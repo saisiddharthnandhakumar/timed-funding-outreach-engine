@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { CriterionRow, ThesisRow } from "@/types/domain";
 import { truncate } from "@/lib/util/text";
 import type { AIService } from "./service";
-import { ClassificationSchema, OutreachSchema, ProfileSchema, type Classification, type OutreachEmail, type StartupProfile } from "./schemas";
+import { ClassificationSchema, LinkedInDmSchema, OutreachSchema, ProfileSchema, type Classification, type LinkedInDm, type OutreachEmail, type StartupProfile } from "./schemas";
 
 const NO_INVENTION =
   "Use ONLY facts stated in the provided material. If something is not stated, use null (or an empty list). Never guess, infer or invent company details, founders, amounts, dates, investors, traction or customers.";
@@ -136,4 +136,30 @@ Accelerator focus: ${truncate(input.thesisSummary, 500)}
 PROFILE (null/empty = unknown, do not mention):
 ${JSON.stringify(input.profile, null, 1)}`;
   return ai.generateStructured({ task: "generate_outreach", system, prompt, schema: OutreachSchema, temperature: 0.6 });
+}
+
+/* ───────────────────────── Task 5: LinkedIn cold DM ───────────────────────── */
+
+export interface LinkedInDmInput {
+  senderName: string;
+  acceleratorName: string;
+  profile: StartupProfile;
+  funding: { stage: string; amount: number | null; currency: string | null };
+  recipientName: string;
+  recipientRole: string | null;
+  positiveSignals: string[];
+}
+
+export function generateLinkedInDm(ai: AIService, input: LinkedInDmInput): Promise<LinkedInDm> {
+  const system = `You write very short, warm LinkedIn first-touch messages for a startup accelerator. ${NO_INVENTION}
+Hard limit: 280 characters including spaces, plain text, no markdown, no emojis, no hashtags, no links, no placeholders in brackets.
+Structure: "Hi {firstName}," then one clause congratulating them on the specific round, one clause showing you understood what they build (a concrete product detail from the profile), and a low-pressure ask to connect or chat briefly. Sign off with the sender's first name. Never claim to know them, to have used the product, or to have met. Do not mention scores.`;
+  const prompt = `Sender: ${input.senderName}, ${input.acceleratorName}
+Recipient: ${input.recipientName}${input.recipientRole ? ` (${input.recipientRole})` : ""} at ${input.profile.company_name}
+Round: ${input.funding.stage}${input.funding.amount ? `, ${input.funding.amount} ${input.funding.currency ?? ""}` : ""}
+Fit signals: ${input.positiveSignals.join("; ") || "n/a"}
+
+PROFILE (null/empty = unknown, do not mention):
+${JSON.stringify({ product: input.profile.product, description: input.profile.description, target_customer: input.profile.target_customer, technology: input.profile.technology }, null, 1)}`;
+  return ai.generateStructured({ task: "generate_linkedin_dm", system, prompt, schema: LinkedInDmSchema, temperature: 0.6 });
 }

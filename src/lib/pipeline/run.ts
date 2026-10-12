@@ -13,6 +13,7 @@ import { persistEnrichment, researchStartup } from "@/lib/research/enrich";
 import { assessRound } from "@/lib/scoring/assess";
 import { loadActiveScoringConfig } from "@/lib/scoring/config";
 import { createOutreachDraft } from "@/lib/outreach/generate";
+import { attachLinkedInDm } from "@/lib/outreach/linkedin";
 import { enrichBatch, enrichOne, pendingQualifiedStartups, type ContactOutcome } from "@/lib/contacts";
 import { hasPriorOutreach } from "@/lib/outreach/guard";
 import { selectDraftProvider } from "@/lib/outreach/providers";
@@ -455,7 +456,7 @@ async function processArticle(ctx: Ctx, a: ArticleRow, cfg: HardFilterConfig, fl
   traceRow(ctx, a, { classification: brief, company: resolved.startup.name, stage: c.funding_stage, eligibility: outcome.eligibility, fitScore: outcome.score, draft: outcome.draft });
 }
 
-async function linkInvestors(roundId: string, c: Classification) {
+export async function linkInvestors(roundId: string, c: Classification) {
   for (const name of c.investors.map((n) => n.trim()).filter(Boolean).slice(0, 12)) {
     const found = await db().from("investors").select("id").ilike("name", name.replace(/[%_]/g, "\\$&")).maybeSingle<{ id: string }>();
     let id = found.data?.id;
@@ -582,6 +583,7 @@ async function evaluateRound(ctx: Ctx, roundId: string): Promise<RoundEval> {
     }
     ctx.summary.drafts++;
     await setRound(roundId, { status: "drafted" });
+    await attachLinkedInDm(ctx.deps.ai, out.outreachId, { log: ctx.log }); // only acts when the draft has no email recipient
     await ctx.log.event("round", roundId, "draft_created", `Draft ${out.status} via ${out.provider}`, { outreach_id: out.outreachId, provider_error: out.providerError });
     if (out.providerError) await ctx.recordError("draft_provider", out.providerError, { type: "outreach", id: out.outreachId });
     // Tell the scout (Telegram, if configured). A failure here must never fail the round or the run.

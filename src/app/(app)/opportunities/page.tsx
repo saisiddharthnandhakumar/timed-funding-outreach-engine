@@ -175,7 +175,7 @@ async function DiscoveriesView({ params }: { params: Params }) {
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <Tag>{rejectionLabel(r.rejection_reason) ?? "Filtered"}</Tag>
-                    {r.rejection_reason !== "already_contacted" && <OverrideButton roundId={r.id} />}
+                    {r.rejection_reason !== "already_contacted" && <OverrideButton kind="round" id={r.id} />}
                   </div>
                 </li>
               ))}
@@ -185,7 +185,10 @@ async function DiscoveriesView({ params }: { params: Params }) {
                     <TextLink href={a.source_url} external>{a.headline}</TextLink>
                     <p className="mt-0.5 text-xs text-faint" title={formatDateTime(a.source_published_at)}>{a.sources?.name} · {ago(a.source_published_at ?? a.first_seen_at, now)}</p>
                   </div>
-                  <Tag>{rejectionLabel(a.rejection_reason) ?? articleStatusLabel(a.processing_status)}</Tag>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Tag>{rejectionLabel(a.rejection_reason) ?? articleStatusLabel(a.processing_status)}</Tag>
+                    <OverrideButton kind="article" id={a.id} />
+                  </div>
                 </li>
               ))}
             </ul>

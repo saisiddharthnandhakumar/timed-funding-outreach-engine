@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { isUuid } from "@/lib/util/text";
 import { draftDetail, configured } from "@/lib/queries";
 import { DraftReview } from "@/components/draft-review";
+import { LinkedInDm } from "@/components/linkedin-dm";
 import { DraftStatus } from "@/components/opportunity/parts";
 import { SetupNotice, Section } from "@/components/ui";
 import { ago, formatAmount } from "@/lib/format";
@@ -13,6 +14,7 @@ import { formatFrom, sendConfigProblem } from "@/lib/outreach/send";
 import { buildMessageChecks } from "@/lib/opportunity/why";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 120; // "Find LinkedIn contact" runs a grounded search and a Gemini call
 
 export default async function DraftPage({ params }: { params: Promise<{ id: string }> }) {
   if (!configured()) return <SetupNotice message="Supabase is not configured." />;
@@ -57,6 +59,8 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
       </header>
 
       <DraftReview draft={d} from={formatFrom(sendConfig)} blockedReason={blockedReason} />
+
+      <LinkedInDm draftId={d.id} hasEmail={!!d.recipient_email} url={d.linkedin_url ?? null} recipient={d.linkedin_recipient ?? null} role={d.linkedin_role ?? null} message={d.linkedin_message ?? null} />
 
       <div className="mt-10 space-y-8">
         <Section id="why-message" title="Why this message" hint="Checked against the draft text">

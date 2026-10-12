@@ -60,3 +60,7 @@ export const OutreachSchema = z.object({
   body: z.string().min(80).max(2500),
 });
 export type OutreachEmail = z.infer<typeof OutreachSchema>;
+
+/** Gemini Task 5: LinkedIn cold DM (kept short enough for a connection note). */
+export const LinkedInDmSchema = z.object({ message: z.string().min(40).max(300) });
+export type LinkedInDm = z.infer<typeof LinkedInDmSchema>;
