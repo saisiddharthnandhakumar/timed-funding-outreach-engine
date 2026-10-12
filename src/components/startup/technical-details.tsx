@@ -8,8 +8,10 @@ const Row = ({ k, children }: { k: string; children: React.ReactNode }) => (
 );
 
 /** Level 3: audit and debugging. Machine codes are intentionally shown raw here. */
-export function TechnicalDetails({ d }: { d: { startup: any; rounds: any[]; assessments: any[]; outreach: any[]; events: any[] } }) {
+export function TechnicalDetails({ d }: { d: { startup: any; rounds: any[]; assessments: any[]; outreach: any[]; events: any[]; evidence?: any[] } }) {
   const { startup, rounds, assessments, outreach, events } = d;
+  const evidence = d.evidence ?? [];
+  const conflicts = evidence.filter((e: any) => e.conflict_json);
   return (
     <div className="space-y-6">
       <dl className="divide-y divide-line">
@@ -31,6 +33,21 @@ export function TechnicalDetails({ d }: { d: { startup: any; rounds: any[]; asse
           {outreach.map((o) => <span key={o.id}><br />outreach {o.id}{o.external_draft_id ? ` (external draft ${o.external_draft_id})` : ""}</span>)}
         </Row>
       </dl>
+
+      {evidence.length > 0 && (
+        <div>
+          <div className="mb-2 text-xs font-medium text-faint">Evidence{conflicts.length > 0 ? ` · ${conflicts.length} disagreement${conflicts.length === 1 ? "" : "s"} flagged` : ""}</div>
+          <ul className="space-y-1.5 font-mono text-xs text-muted">
+            {evidence.map((e: any) => (
+              <li key={e.id} className="break-words">
+                <span className="text-faint">{e.field_key}</span> = {typeof e.value_json === "string" ? e.value_json : JSON.stringify(e.value_json)}
+                {" "}· {String(e.evidence_type).replace(/_/g, " ")}{e.sources?.name ? ` (${e.sources.name})` : ""} · {e.confidence}
+                {e.conflict_json ? <span className="text-bad"> · conflicts with {(e.conflict_json.values ?? []).map((v: any) => `${v.sourceKey}: ${typeof v.value === "string" ? v.value : JSON.stringify(v.value)}`).join(" vs ")}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div>
         <div className="mb-2 text-xs font-medium text-faint">Pipeline events</div>

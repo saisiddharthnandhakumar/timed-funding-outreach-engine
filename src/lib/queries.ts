@@ -39,7 +39,7 @@ export interface HealthSnapshot {
 export async function healthSnapshot(): Promise<HealthSnapshot> {
   const [runsRes, sourcesRes, draftsReady] = await Promise.all([
     db().from("pipeline_runs").select("id,status,trigger,started_at,completed_at,errors_json").order("started_at", { ascending: false }).limit(50),
-    db().from("sources").select("key,name,enabled,last_polled_at,last_success_at,last_error,last_error_at").order("name"),
+    db().from("sources").select("key,name,enabled,poll_interval_minutes,last_polled_at,last_success_at,last_error,last_error_at").order("name"),
     count("outreach", (q) => q.in("status", ["generated", "draft_created"])),
   ]);
   const runs = (runsRes.data ?? []) as RunLike[];
@@ -243,7 +243,9 @@ export async function startupDetail(id: string) {
   const contacts = await db().from("startup_contacts").select("*").eq("startup_id", id).order("kind").order("created_at");
   const entityIds = [id, ...((rounds.data ?? []) as { id: string }[]).map((r) => r.id)];
   const events = await db().from("pipeline_events").select("id,event_type,message,created_at,entity_type,metadata_json").in("entity_id", entityIds).order("created_at", { ascending: false }).limit(40);
-  return { startup, founders: founders.data ?? [], rounds: rounds.data ?? [], assessments: assessments.data ?? [], outreach: outreach.data ?? [], contacts: contacts.error ? [] : contacts.data ?? [], events: events.data ?? [] } as any;
+  // Provenance of researched facts (investor pages, per-report amounts). Optional: absent where the table doesn't exist yet.
+  const evidence = await db().from("research_evidence").select("id,field_key,value_json,evidence_type,confidence,conflict_json,source_url,observed_at,sources(name)").eq("startup_id", id).order("field_key").limit(80);
+  return { startup, founders: founders.data ?? [], rounds: rounds.data ?? [], assessments: assessments.data ?? [], outreach: outreach.data ?? [], contacts: contacts.error ? [] : contacts.data ?? [], events: events.data ?? [], evidence: evidence.error ? [] : evidence.data ?? [] } as any;
 }
 
 // ───────────────────────────── drafts ─────────────────────────────

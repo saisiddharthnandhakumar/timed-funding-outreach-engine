@@ -17,6 +17,8 @@ export interface ResearchContext {
   hqCountry: string | null;
   articles: { url: string; text: string; links: { href: string; text: string }[] }[];
   website: string | null;
+  /** Extra evidence documents (e.g. investor portfolio pages) offered to synthesis after the company's own site. */
+  extraDocs?: ResearchDoc[];
 }
 
 const NON_COMPANY_DOMAINS = [
@@ -164,6 +166,8 @@ export async function researchStartup(ai: AIService, ctx: ResearchContext, log?:
       await log?.event("startup", entityId ?? null, "research_provider_failed", `website fetch failed: ${errorMessage(err)}`, { website });
     }
   }
+
+  docs.push(...(ctx.extraDocs ?? []));
 
   const profile = await synthesizeProfile(ai, { companyName: ctx.companyName, hintCountry: ctx.hqCountry, docs });
 

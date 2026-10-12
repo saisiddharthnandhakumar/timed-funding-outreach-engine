@@ -19,10 +19,14 @@ import { hasPriorOutreach } from "@/lib/outreach/guard";
 import { selectDraftProvider } from "@/lib/outreach/providers";
 import type { DraftProvider } from "@/lib/outreach/providers/types";
 import { notifyDraftReadySafely, runTelegramSweep, telegramDeps } from "@/lib/telegram/notify";
-import { canonicalizeUrl, errorMessage, mapLimit } from "@/lib/util/text";
+import { canonicalizeUrl, domainFromUrl, errorMessage, mapLimit } from "@/lib/util/text";
 import type { RejectionReason, SourceRow } from "@/types/domain";
 import { evaluateHardFilters, passesGeography, type HardFilterConfig } from "./filters";
 import { PipelineLogger } from "./logger";
+import { entriesToDocs, type InvestorLookup } from "@/lib/investors/enrich";
+import { mergeInvestorEntries } from "@/lib/investors/evidence";
+import { saveEvidence } from "@/lib/investors/evidence-store";
+import { recordArticleEvidence } from "@/lib/investors/article-evidence";
 import { ProgressTracker } from "./progress";
 import { looksLikeFundingNews } from "./prefilter";
 
@@ -34,6 +38,8 @@ export interface PipelineDeps {
   now?: () => Date;
   /** Founder-first contact discovery for a qualified startup (default: real providers). Tests inject a fake. */
   enrichContacts?: (startupId: string) => Promise<ContactOutcome | null>;
+  /** Investor portfolio lookup that adds first-party evidence to research. Off unless supplied (production wiring passes it). */
+  investorLookup?: InvestorLookup;
 }
 
 export interface RunOptions {
@@ -438,6 +444,10 @@ async function processArticle(ctx: Ctx, a: ArticleRow, cfg: HardFilterConfig, fl
   });
   await linkInvestors(resolved.round.id, c);
   await db().from("funding_articles").update({ funding_round_id: resolved.round.id }).eq("id", a.id);
+  // Attributed evidence for this report (amount/stage, investor confirmation). Never allowed to fail the article.
+  await recordArticleEvidence({ sourceId: a.source_id, article: { url: a.source_url }, classification: c, startupId: resolved.startup.id, roundId: resolved.round.id }).catch((err) =>
+    ctx.log.event("article", a.id, "evidence_failed", errorMessage(err)),
+  );
 
   if (!resolved.isNewRound) {
     await db().from("funding_articles").update({ processing_status: "duplicate", processed_at: ctx.now().toISOString() }).eq("id", a.id);
@@ -483,6 +493,19 @@ interface RoundEval {
   draft: string;
 }
 
+/** Fill-only merge of investor facts into the researched profile, with provenance. Evidence trouble never fails research. */
+export async function applyInvestorEvidence(log: PipelineLogger, startupId: string, roundId: string, research: { profile: StartupProfile }, entries: Parameters<typeof mergeInvestorEntries>[1]): Promise<void> {
+  try {
+    const merged = mergeInvestorEntries(research.profile, entries);
+    research.profile = merged.profile;
+    await saveEvidence({ startupId, roundId, drafts: merged.evidence });
+    for (const c of merged.conflicts) await log.event("startup", startupId, "evidence_conflict", `${c.field}: research and ${c.source} disagree (kept research value)`, { existing: c.existing, other: c.other });
+    await log.event("startup", startupId, "investor_evidence", `${entries.map((e) => e.sourceName).join(", ")} added first-party evidence`, { fields: merged.evidence.length });
+  } catch (err) {
+    await log.event("startup", startupId, "investor_evidence_failed", errorMessage(err));
+  }
+}
+
 async function setRound(roundId: string, patch: Record<string, unknown>) {
   await db().from("funding_rounds").update(patch).eq("id", roundId);
 }
@@ -525,12 +548,14 @@ async function evaluateRound(ctx: Ctx, roundId: string): Promise<RoundEval> {
       docs.push({ url: fa.source_url, text: fa.raw_text ?? `${fa.headline}\n${fa.snippet ?? ""}`, links });
     }
     const research = await ctx.progress.track("research", `Researching ${startup.name}`, async () => {
+      const entries = ctx.deps.investorLookup ? await ctx.deps.investorLookup.gather({ name: startup.name, domain: domainFromUrl(startup.website) }).catch(() => []) : [];
       const r = await researchStartup(
         ctx.deps.ai,
-        { companyName: startup.name, hqCountry: startup.hq_country, articles: docs, website: startup.website },
+        { companyName: startup.name, hqCountry: startup.hq_country, articles: docs, website: startup.website, extraDocs: entriesToDocs(entries) },
         ctx.log,
         startup.id,
       );
+      if (entries.length) await applyInvestorEvidence(ctx.log, startup.id, roundId, r, entries);
       await persistEnrichment(startup.id, r, ctx.log);
       return r;
     });

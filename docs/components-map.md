@@ -59,7 +59,8 @@ Old links redirect (308, `next.config.ts`): `/dashboard → /today`, `/feed → 
 
 | Module | Responsibility |
 |---|---|
-| `sources/` | `FundingSourceAdapter` interface, RSS + news-sitemap adapters, registry, article text extraction |
+| `sources/` | `FundingSourceAdapter` interface, RSS + news-sitemap adapters, Mint start-ups adapter, registry (routes investor keys to `investors/`), article text extraction |
+| `investors/` | Investor layer: `InvestorSite` (discover / findEntry), per-site recipes in `sites/`, polite fetch context, `InvestorDiscoveryAdapter` (signals → articles), `InvestorEnricher` (cached portfolio lookup), evidence merge + conflict logic, `research_evidence` store |
 | `net/safe-fetch.ts` | SSRF-hardened fetch: http(s) only, public IPs only, manual redirect re-validation, timeout, size cap |
 | `gemini/` | `AIService` interface, `GeminiService` (Gemini Flash), zod schemas, the four task prompts, response cache |
 | `pipeline/` | `run.ts` orchestrator, `filters.ts` (hard filters), `prefilter.ts` (cheap relevance gate), event logger |
@@ -70,6 +71,29 @@ Old links redirect (308, `next.config.ts`): `/dashboard → /today`, `/feed → 
 | `thesis/` | zod schema shared by the settings UI and its server action |
 | `supabase/admin.ts` | Server-only service-role client |
 | API routes | `/api/cron/pipeline` (Bearer `CRON_SECRET`), `/api/pipeline/run` (no login; runs in `after()`, serialized by the run lock) |
+
+## Investor sources and evidence (`src/lib/investors`)
+
+```
+NEWS (RSS / sitemap / Mint page) ─┐
+INVESTOR posts (InvestorSite.discover) ─┤→ funding_articles → classify → hard filters → dedupe → ONE startup + ONE round (many sources)
+                                  │
+survivors → InvestorEnricher.gather (investor_portfolio_entries cache, TTL) → research synthesis (extra doc)
+          → mergeInvestorEntries (fill-only) → research_evidence (+ conflicts) → persistEnrichment → scoring (unchanged)
+```
+
+| File | Role |
+|---|---|
+| `types.ts` | `InvestorSite`, `SiteContext`, `DiscoverySignal`, `PortfolioEntry` |
+| `fetch.ts` | `createSiteContext`: robots-aware, per-host rate limit, process cache, optional size cap |
+| `html.ts` | JSON-LD / `__NEXT_DATA__` / sitemap helpers, amount and stage parsing |
+| `sites/*.ts` | One recipe per investor (Blume, Stellaris, Elevation, Nexus, Peak XV, 3one4, India Quotient; Antler is an inert stub) |
+| `adapter.ts` | `InvestorDiscoveryAdapter` (plugs into ingestion), `signalToArticle` |
+| `enrich.ts` | `InvestorEnricher` (cache + lookup), `entriesToDocs` |
+| `evidence.ts` | Evidence types/rank/confidence, `mergeInvestorEntries`, `fundingConflict` (pure) |
+| `evidence-store.ts`, `article-evidence.ts` | Persist evidence; per-report amount/stage evidence, conflict stamping, investor confirmation |
+
+Tables: `research_evidence` (provenance, confidence, `conflict_json`), `investor_portfolio_entries` (portfolio cache). Extended: `sources` (`source_type`, `source_role`, `adapter_status`, `status_note`, `config_json`), `funding_round_investors` (`confirmed_by_investor_site`, `evidence_url`).
 
 ## Third-party services
 

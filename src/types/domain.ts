@@ -85,4 +85,10 @@ export interface SourceRow {
   last_items_found: number;
   last_error: string | null;
   last_error_at: string | null;
+  /** Added by the discovery/enrichment extension; absent on rows read before it. */
+  source_type?: string | null;
+  source_role?: string[] | null;
+  adapter_status?: string | null;
+  status_note?: string | null;
+  config_json?: Record<string, unknown> | null;
 }

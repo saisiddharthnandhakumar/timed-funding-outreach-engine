@@ -95,6 +95,18 @@ Information architecture first, then screen hierarchy, then visual polish. No ba
 - [x] `RESEND_API_KEY`, `RESEND_FROM_EMAIL=rohit@wakeandwyze.com`, `RESEND_REPLY_TO=hello@wakeandwyze.com` set in `.env.local` and Vercel Production
 - [ ] Commit/push; then send one real test (to an address you own) to confirm end to end. No email has been sent yet.
 
+## Discovery & enrichment extension (2026-10-13) — implemented, migrated to Supabase, NOT yet committed
+
+Additive only; existing sources, tables, scoring, hard filters and outreach are unchanged.
+
+- **Schema** (`20261013000001`–`3`, applied via the Supabase MCP): `sources.source_type/source_role/adapter_status/status_note/config_json`; new `research_evidence` and `investor_portfolio_entries`; `funding_round_investors.confirmed_by_investor_site/evidence_url`. The five live news sources were only marked `verified`.
+- **News:** Mint — Start-ups added (verified live: 20 articles stored, dates correct). ETtech was already live as `et_startups`. Business Standard, Moneycontrol and Financial Express are **unsupported** (403 bot protection / no usable feed) and recorded as disabled.
+- **Investors verified live (2026-10-12):** Blume (discovery + enrichment), Stellaris, Elevation, Peak XV, 3one4 (discovery + enrichment), Nexus and India Quotient (enrichment only). Live lookup returned founders, sector, website and stage from each; a made-up company returned nothing with no page fetch. Live ingestion stored Blume 1, 3one4 1, Mint 20 articles; Stellaris, Elevation and Peak XV polled cleanly with nothing new in their windows. **Antler India unsupported** (robots.txt disallows company pages).
+- **Evidence/conflicts:** fill-only merge with provenance, conflict flags (website, founders, funding amount), investor confirmation on the round. Surfaced in startup page → Technical details → Evidence and in `evidence_conflict` pipeline events.
+- **Settings → Sources** grouped (News / Investor / More sources), unavailable sources shown as "Not available" with the reason; an unverified source cannot be enabled.
+- **Verification:** lint, typecheck, build clean; 313+ tests pass, including `source-regression`, `mint-source`, `investor-*` unit tests, per-site fixture tests (`tests/investors/`) and `tests/integration/investor-pipeline.test.ts` (one startup + one round from investor and news reports, evidence + conflict, a broken source isolated, scoring unchanged at 87, idempotent). The existing `pipeline.fixture.test.ts` passes unchanged; vitest now runs files serially (`fileParallelism: false`) because pipeline integration tests share the single-run lock.
+- **Not done / follow-ups:** no fresh qualifying investor announcement existed in the 24h window, so no new startup was created from an investor source in the live DB (covered by the fixture integration test instead); investor rationale is stored as evidence only, not fed to outreach; optional future investors (Accel, Lightspeed, Kalaari, …) are not integrated.
+
 ## Remaining
 
 - [ ] Phase 16 — Final acceptance sign-off (checklist in PRD §39), including a secret scan and a live check of the deployed URL

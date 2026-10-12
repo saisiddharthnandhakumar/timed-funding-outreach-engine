@@ -6,7 +6,7 @@ import { timeAgo } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 const STEPS = [
-  { n: "01", title: "Discover", body: "Four Indian startup-news feeds are polled around the clock. Every article keeps its published and first-seen timestamps." },
+  { n: "01", title: "Discover", body: "Indian startup-news feeds and investor websites are checked around the clock. Every report keeps its published and first-seen timestamps." },
   { n: "02", title: "Classify", body: "Gemini Flash reads each candidate: is it a funding round, which company, India, which stage, how much, who invested." },
   { n: "03", title: "Filter & dedupe", body: "Hard rules drop wrong stage, wrong country and stale news. Four articles about one raise collapse into one funding event." },
   { n: "04", title: "Research", body: "Only survivors are researched: official site, founders, product, traction. Unknown stays unknown, never invented." },

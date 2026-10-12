@@ -14,6 +14,10 @@ const PARTNER = /^(partnerships?|partners?|collab|collaborations?|business|biz|f
 const PRESS = /^(press|media|pr|sales|marketing|investors?|ir)$/i;
 const SUPPORT = /^(support|help|care|customercare|customer[-_.]?support|service|helpdesk|careers?|jobs|hr|recruit(?:ment)?|talent|billing|accounts?)$/i;
 
+/** Recruiting / billing inboxes: stored as company contacts but never a sensible recipient for funding outreach. */
+const NOT_FOR_OUTREACH = /^(careers?|jobs|hr|recruit(?:ment)?|talent|billing|accounts?)$/i;
+export const isOutreachMailbox = (email: string): boolean => !NOT_FOR_OUTREACH.test(email.split("@")[0]);
+
 export function mailboxRole(local: string): MailboxRole {
   if (PARTNER.test(local)) return "partnerships";
   if (GENERAL.test(local)) return "general";

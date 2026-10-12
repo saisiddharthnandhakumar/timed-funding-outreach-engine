@@ -41,10 +41,41 @@ Funding sources → adapters → ingestion (funding_articles)
 | YourStory | RSS (`/feed`) |
 | Entrackr | Google-News sitemap (`/news-sitemap.xml`, allowed by its robots.txt; no RSS exists) |
 | ET Startups (ETtech) | RSS (`/tech/startups/rssfeeds/78570550.cms`) — added 2026-10-12; ~37 of 50 headlines are funding stories and it surfaces deals the other four miss |
+| Mint — Start-ups *(secondary)* | Start-ups section page (`/companies/start-ups`): JSON-LD item list + article cards, dated from Mint's article id (added 2026-10-13). Mint's RSS is general business news, so it is not used |
+
+Investor websites are a separate kind of source — see [Investor sources and evidence](#investor-sources-and-evidence).
 
 Candidates evaluated and **rejected** (2026-10-12): Inc42 `/tag/funding/` feed (stale since 2023), Moneycontrol and Business Standard (HTTP 403 to bots — not bypassed), VCCircle (404/paywalled), ETtech general, Livemint, BusinessLine, TOI, TechCrunch India, Medianama, StartupTalky (0–4 funding stories per ~50 items, or stale), Google News search (links resolve to a JS page, not the article), PR Newswire (global noise).
 
-New sources: insert an `rss`/`sitemap` row into `sources`, or implement `FundingSourceAdapter` (`src/lib/sources/types.ts`) and register it.
+New news sources: insert an `rss`/`sitemap` row into `sources`, or implement `FundingSourceAdapter` (`src/lib/sources/types.ts`) and register it.
+
+**Checked 2026-10-13 and not added:** Business Standard and Moneycontrol (HTTP 403 bot protection on every feed/page; not bypassed), Financial Express (RSS switched off; its news sitemap is general business news with almost no startup funding and would flood the filtered list). They are recorded in `sources` as disabled with the reason, and show as "Not available" in Settings → Sources.
+
+## Investor sources and evidence
+
+The source layer separates **discovery** ("a funding event happened") from **enrichment / verification** ("who are the founders, what sector, what stage did the investor enter at"). `sources` carries `source_type` (`news` · `investor` · `company` · `database` · `search`), `source_role` (`discovery` · `enrichment` · `verification`), `adapter_status` (`verified` · `unverified` · `unsupported`), a `status_note` and a `config_json` (tier, window, page budget, cache TTL). A source can only be switched on once its adapter is `verified`.
+
+| Investor | Discovery | Enrichment (portfolio page) | Notes |
+|---|---|---|---|
+| Blume Ventures | "Why we invested / investing in" commentaries (JSON-LD dates) | sector, location, partnered year, website, founders | homepage sits behind a Cloudflare challenge and is never fetched; sitemaps, commentaries and startup pages are served normally |
+| Stellaris Venture Partners | funding news + "why we invested" posts from `/insights` | entry stage, partnered year, founders, co-investors, website | `/insights` is ~2.6 MB, so this site raises the fetch cap to 4 MB |
+| Elevation Capital | `investing-in-*` posts (dated via `__NEXT_DATA__`) | stage invested, sector, website, founders | posts a few times a year; sitemap has no dates, so discovery samples a few unseen posts per run |
+| Nexus Venture Partners | — (no news surface) | sector, location, status, website, founders | India mirror pages carry no announcements |
+| Peak XV Partners | investment posts from the `/insights` index (rare) | sector, current stage, first-partnered year, website, founders | enrichment-first; never the fastest trigger |
+| 3one4 Capital *(secondary)* | strict funding-post filter on `/blog` | sector, website, founders, co-investors | |
+| India Quotient *(secondary)* | — | website, sector, founders from the one `/portfolio` page | company name is the slug (no display name published) |
+| Antler India *(secondary)* | — | **unsupported**: company pages are disallowed by robots.txt | |
+
+How it fits the pipeline (`src/lib/investors/`):
+
+- **Discovery** — an investor's recent posts become normal `funding_articles` through the existing `FundingSourceAdapter` path (`InvestorDiscoveryAdapter`), so classification, hard filters and de-duplication are unchanged. One investor post and one news article about the same raise become **one** startup and **one** round with two `funding_round_sources`. Each adapter fails alone: an error is recorded against that source and the run continues. Only posts inside `window_days` are read (no historical backfill) and URLs already stored are skipped.
+- **Enrichment** — after a startup survives the hard filters, `InvestorEnricher` looks it up in each enabled, verified investor source that has the enrichment role (slug/name/domain match; a miss costs no page fetch). Found portfolio facts are cached in `investor_portfolio_entries` for `ttl_days` (default 14), offered to research synthesis as a first-party document, and merged **fill-only**: null fields are filled, existing research values are never overwritten, geography (`hq_country`/`hq_city`) is never filled from investor data. Wired in explicitly by the three production entry points (`PipelineDeps.investorLookup`), so tests stay hermetic.
+- **Evidence** — `research_evidence` stores one row per fact and source with an evidence type (`company_first_party`, `investor_first_party`, `reputable_media`, `database`, `search_result`; first-party outranks media outranks database outranks search), a confidence (`high` only when sources agree; `low` for search results or conflicts), and `conflict_json` when sources disagree (website, founders, or a funding amount differing by more than ~3%, e.g. $3M vs $3.2M). Conflicts also appear as `evidence_conflict` pipeline events and under the startup page → Technical details → Evidence. An investor announcing its own investment sets `funding_round_investors.confirmed_by_investor_site`.
+- **Not fit.** Investor data improves research completeness and data confidence only. The fit-score formula, thesis, hard filters and outreach logic are untouched; being backed by a given investor earns no points.
+
+Adding an investor: write an `InvestorSite` in `src/lib/investors/sites/` (only fetch through `ctx.fetch`; return null/empty rather than guess), list it in `src/lib/investors/registry.ts`, add a `sources` row (`source_type='investor'`, `type='scrape'`), verify it live, then set `adapter_status='verified'`.
+
+Known limitations: investor sites publish few announcements (a few a quarter each), so most polls find nothing new; their portfolio pages rarely state a funding stage; parsers depend on each site's current markup (a redesign makes a site return nothing, never wrong data); Gemini is not used by any investor adapter.
 
 ## AI pipeline (all Gemini Flash)
 
@@ -61,7 +92,7 @@ Runtime AI is Gemini Flash. If `OPENROUTER_API_KEY` is set, requests that Gemini
 
 ## Database
 
-Migrations live in `supabase/migrations/` (version-controlled): `sources`, `funding_articles`, `startups`, `founders`, `funding_rounds`, `funding_round_sources`, `investors`, `funding_round_investors`, `accelerator_theses`, `scoring_criteria`, `fit_assessments`, `outreach`, `pipeline_runs`, `pipeline_events`, `ai_calls`, `pipeline_lock`. RLS is enabled on all tables with no policies (server-only access via the service-role key).
+Migrations live in `supabase/migrations/` (version-controlled): `sources`, `funding_articles`, `startups`, `founders`, `funding_rounds`, `funding_round_sources`, `investors`, `funding_round_investors`, `accelerator_theses`, `scoring_criteria`, `fit_assessments`, `outreach`, `pipeline_runs`, `pipeline_events`, `ai_calls`, `pipeline_lock`, `research_evidence`, `investor_portfolio_entries` (the last two and the new `sources` columns are additive: migrations `20261013000001`–`3`). RLS is enabled on all tables with no policies (server-only access via the service-role key).
 
 ## Setup
 

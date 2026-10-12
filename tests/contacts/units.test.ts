@@ -93,6 +93,14 @@ describe("contact selection hierarchy", () => {
     expect(selectPreferred([support, general]).contact?.email).toBe("hello@nimbus.example");
     expect(selectPreferred([cand({ mxValid: false })]).type).toBe("not_found");
   });
+  it("never picks a careers/HR inbox, e.g. Tessolve's contact page (inquiry@ + HR@)", () => {
+    const inquiry = cand({ kind: "company", email: "inquiry@tessolve.com", mailboxRole: "general", founderName: null });
+    const hr = cand({ kind: "company", email: "HR@tessolve.com", mailboxRole: "support", founderName: null });
+    const form = cand({ kind: "contact_form", email: null, contactUrl: "https://tessolve.com/contact", founderName: null });
+    expect(selectPreferred([hr, inquiry]).contact?.email).toBe("inquiry@tessolve.com");
+    expect(selectPreferred([hr]).type).toBe("not_found");
+    expect(selectPreferred([hr, form]).type).toBe("contact_form");
+  });
   it("merge never downgrades a stored status but upgrades when better evidence arrives", () => {
     const stored: StoredContact = { ...cand({ status: "publicly_confirmed" }), id: "1", isPreferred: true, firstFoundAt: "2026-01-01T00:00:00Z" };
     const [afterGuess] = mergeAll([stored], [cand({ status: "pattern_guessed" })], "2026-10-12T00:00:00Z");

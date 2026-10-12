@@ -1,3 +1,4 @@
+import { isOutreachMailbox } from "./attribute";
 import { OUTREACH_SAFE, STATUS_RANK, contactKey, type ContactCandidate, type ContactKind, type StoredContact } from "./types";
 
 export type PreferredType = ContactKind | "not_found";
@@ -11,7 +12,7 @@ const roleOrder = (role: string | null) => (/\bceo\b|chief executive/i.test(role
  * Strict hierarchy:
  *   1. publicly confirmed founder email
  *   2. provider-verified founder email (with attribution)
- *   3. publicly confirmed company contact email
+ *   3. publicly confirmed company contact email (not a careers/HR/billing inbox)
  *   4. public contact form
  *   5. nothing reliable → not_found
  * Guessed / domain-valid-only / unverified candidates are never preferred.
@@ -20,7 +21,7 @@ export function selectPreferred(contacts: (ContactCandidate & { founderRole?: st
   const tier = (c: ContactCandidate): number => {
     if (c.kind === "founder" && c.email && c.status === "publicly_confirmed") return 1;
     if (c.kind === "founder" && c.email && c.status === "provider_verified") return 2;
-    if (c.kind === "company" && c.email && OUTREACH_SAFE.has(c.status)) return 3;
+    if (c.kind === "company" && c.email && OUTREACH_SAFE.has(c.status) && isOutreachMailbox(c.email)) return 3;
     if (c.kind === "contact_form" && c.contactUrl) return 4;
     return 99;
   };
